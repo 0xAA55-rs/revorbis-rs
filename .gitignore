@@ -2,4 +2,5 @@
 .vscode
 *.wav
 *.mp3
+*.flac
 *.sublime*

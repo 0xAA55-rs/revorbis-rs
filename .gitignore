@@ -5,3 +5,5 @@
 *.flac
 *.m4a
 *.sublime*
+*.exe
+stopplay.bat

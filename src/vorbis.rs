@@ -620,14 +620,17 @@ impl CodeBooks {
         })
     }
 
+    /// * Get the total bits of the codebook.
     pub fn get_total_bits(&self) -> usize {
         self.total_bits
     }
 
+    /// * Get the total bytes of the codebook that are able to contain all of the bits.
     pub fn get_total_bytes(&self) -> usize {
         BitviseData::calc_total_bytes(self.total_bits)
     }
 
+    /// * Pack the codebook to binary for storage.
     pub fn pack(&self) -> Result<CodeBooksPacked, AudioWriteError> {
         let mut bitwriter = BitWriter::new();
         let mut bits_of_books = Vec::<usize>::with_capacity(self.books.len());

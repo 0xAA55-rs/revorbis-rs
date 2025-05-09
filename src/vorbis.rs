@@ -744,7 +744,7 @@ pub fn remove_codebook_from_ogg_page(ogg_packet: &[u8], ogg_packet_len: &mut usi
     Ok(new_packet.to_bytes())
 }
 
-pub fn remove_codebook_from_ogg_stream(data: &[u8]) -> Result<Vec<u8>, AudioWriteError> {
+pub fn _remove_codebook_from_ogg_stream(data: &[u8]) -> Result<Vec<u8>, AudioWriteError> {
     let mut packet_pos = 0usize;
     let mut packets = Vec::<u8>::new();
 

@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 use std::{fmt::{self, Debug, Formatter}, io::{Seek, Write, Cursor, SeekFrom}};
-use crate::{AudioReadError, AudioError, AudioWriteError};
+use crate::errors::{AudioReadError, AudioError, AudioWriteError};
 use crate::format_array;
-use crate::bitvise::BitviseData;
+use crate::utils::BitwiseData;
 
 const MASK: [u32; 33] = [
     0x00000000,

@@ -1,7 +1,8 @@
 #![allow(dead_code)]
-use std::{fmt::{self, Debug, Formatter}, io::{Seek, Write, Cursor, SeekFrom}};
+use std::{fmt::{self, Debug, Formatter}, io::{Seek, Write, SeekFrom}};
 use crate::errors::{AudioReadError, AudioError, AudioWriteError};
 use crate::format_array;
+use crate::io_utils::CursorVecU8;
 use crate::utils::BitwiseData;
 
 const MASK: [u32; 33] = [
@@ -124,13 +125,13 @@ pub struct BitWriter {
     pub total_bits: usize,
 
     /// * We owns the written data
-    pub cursor: Cursor<Vec<u8>>,
+    pub cursor: CursorVecU8,
 }
 
 impl Default for BitWriter {
     fn default() -> Self {
         // We must have at least one byte written here because we have to add bits to the last byte.
-        let mut cursor = Cursor::new(vec![0]);
+        let mut cursor = CursorVecU8::new(vec![0]);
         cursor.seek(SeekFrom::End(0)).unwrap();
         Self {
             endbit: 0,
@@ -141,7 +142,7 @@ impl Default for BitWriter {
 }
 
 impl BitWriter {
-    /// * Create a `Cursor<Vec<u8>>` to write
+    /// * Create a `CursorVecU8` to write
     pub fn new() -> Self {
         Self::default()
     }

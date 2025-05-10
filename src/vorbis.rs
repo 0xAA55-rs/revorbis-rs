@@ -198,6 +198,11 @@ impl BitWriter {
     }
 }
 
+/// ## This is the parsed Vorbis codebook, it's used to quantify the audio samples.
+/// * This is the re-invented wheel. For this piece of code, this thing is only used to parse the binary form of the codebooks.
+/// * And then I can sum up how many **bits** were used to store the codebooks.
+/// * Vorbis data are all stored in bitwise form, almost anything is not byte-aligned. Split data in byte arrays just won't work on Vorbis data.
+/// * We have to do it in a bitwise way.
 #[derive(Clone, PartialEq, Eq)]
 pub struct CodeBook {
     pub dim: u16,
@@ -678,6 +683,10 @@ impl Debug for CodeBooks {
     }
 }
 
+/// * This function removes the codebooks from the Vorbis setup header. The setup header was extracted from the Ogg stream.
+/// * Since Vorbis stores data in bitwise form, all of the data are not aligned in bytes, we have to parse it bit by bit.
+/// * After parsing the codebooks, we can sum up the total bits of the codebooks, and then we can replace it with an empty codebook.
+/// * At last, use our `BitwiseData` to concatenate these bit-strings without any gaps.
 pub fn remove_codebook_from_setup_header(setup_header: &[u8]) -> Result<Vec<u8>, AudioWriteError> {
     // Try to verify if this is the right way to read the codebook
     assert_eq!(&setup_header[0..7], b"\x05vorbis", "Checking the vorbis header that is a `setup_header` or not");
@@ -697,6 +706,10 @@ pub fn remove_codebook_from_setup_header(setup_header: &[u8]) -> Result<Vec<u8>,
     Ok(setup_header.to_bytes())
 }
 
+/// * This function extracts data from an Ogg packet, the packet contains the Vorbis header.
+/// * There are 3 kinds of Vorbis headers, they are the identification header, the metadata header, and the setup header.
+/// * The codebooks are stored in the setup header. Let's find the codebooks, parse them to get the total length (in bits), and replace it with an empty codebook.
+/// * After that, all of the data were not aligned in bytes, they were just bits, we had to concatenate the bits without any gap by using a bunch of bitwise operations and shifts and bit or/bit and.
 pub fn remove_codebook_from_ogg_page(ogg_packet: &[u8], ogg_packet_len: &mut usize) -> Result<Vec<u8>, AudioWriteError> {
     use crate::ogg::OggPacket;
 
@@ -744,6 +757,15 @@ pub fn remove_codebook_from_ogg_page(ogg_packet: &[u8], ogg_packet_len: &mut usi
     Ok(new_packet.to_bytes())
 }
 
+/// ## This function removes all codebooks from the Vorbis Setup Header.
+/// * To think normally, when the codebooks in the Vorbis audio data were removed, the Vorbis audio was unable to decode.
+/// * This function exists because the author of `Vorbis ACM` registered `FORMAT_TAG_OGG_VORBIS3` and `FORMAT_TAG_OGG_VORBIS3P`, and its comment says "Have no codebook header".
+/// * I thought if I wanted to encode/decode this kind of Vorbis audio, I might have to remove the codebooks when encoding.
+/// * After days of re-inventing the wheel of Vorbis bitwise read/writer and codebook parser and serializer, and being able to remove the codebook, then, BAM, I knew I was pranked by the Japanese author.
+/// * I have his decoder source code, when I read it carefully, I found out that he just stripped the whole Vorbis header for `FORMAT_TAG_OGG_VORBIS3` and `FORMAT_TAG_OGG_VORBIS3P`.
+/// * And when decoding, he creates a temporary encoder with parameters referenced from the `fmt ` chunk, uses that encoder to create the Vorbis header to feed the decoder, and then can decode the Vorbis audio.
+/// * It has nothing to do with the codebook. I was pranked.
+/// * Thanks, the source code from 2001, and the author from Japan.
 pub fn _remove_codebook_from_ogg_stream(data: &[u8]) -> Result<Vec<u8>, AudioWriteError> {
     let mut packet_pos = 0usize;
     let mut packets = Vec::<u8>::new();

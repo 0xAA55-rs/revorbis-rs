@@ -126,7 +126,7 @@ pub fn shift_data_to_back(data: &Vec<u8>, bits: usize, total_bits: usize) -> Vec
 
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct BitviseData {
+pub struct BitwiseData {
     /// * Store as bytes
     pub data: Vec<u8>,
 
@@ -134,7 +134,7 @@ pub struct BitviseData {
     pub total_bits: usize,
 }
 
-impl BitviseData {
+impl BitwiseData {
     pub fn new(data: &[u8], total_bits: usize) -> Self {
         let mut ret = Self {
             data: data[..Self::calc_total_bytes(total_bits)].to_vec(),
@@ -221,7 +221,7 @@ impl BitviseData {
         }
     }
 
-    /// * Concat another `BitviseData` to the bitstream, without the gap.
+    /// * Concat another `BitwiseData` to the bitstream, without the gap.
     pub fn concat(&mut self, rhs: &Self) {
         if rhs.total_bits == 0 {
             return;
@@ -246,7 +246,7 @@ impl BitviseData {
     }
 }
 
-impl Default for BitviseData {
+impl Default for BitwiseData {
     fn default() -> Self {
         Self {
             data: Vec::new(),
@@ -255,9 +255,9 @@ impl Default for BitviseData {
     }
 }
 
-impl Debug for BitviseData {
+impl Debug for BitwiseData {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_struct("BitviseData")
+        f.debug_struct("BitwiseData")
         .field("data", &format_args!("{}", format_array!(self.data, " ", "{:02x}")))
         .field("total_bits", &self.total_bits)
         .finish()

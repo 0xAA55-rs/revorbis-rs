@@ -512,7 +512,7 @@ impl CodeBook {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CodeBooksPacked {
     /// * The packed code books
-    pub books: BitviseData,
+    pub books: BitwiseData,
 
     /// * The size of each codebook in bits
     pub bits_of_books: Vec<usize>,
@@ -549,13 +549,13 @@ impl CodeBooksPacked {
     }
 
     /// * Breakdown to each book
-    pub fn split(&self) -> Result<Vec<BitviseData>, AudioError> {
+    pub fn split(&self) -> Result<Vec<BitwiseData>, AudioError> {
         let num_books = self.bits_of_books.len();
         if num_books == 0 {
             return Ok(Vec::new());
         }
-        let mut ret = Vec::<BitviseData>::with_capacity(num_books);
-        let mut books = BitviseData {
+        let mut ret = Vec::<BitwiseData>::with_capacity(num_books);
+        let mut books = BitwiseData {
             data: self.books.data[1..].to_vec(),
             total_bits: self.books.total_bits - 8,
         };
@@ -569,7 +569,7 @@ impl CodeBooksPacked {
     }
 
     /// * Concat a packed book without a gap
-    pub fn concat(&mut self, book: &BitviseData) {
+    pub fn concat(&mut self, book: &BitwiseData) {
         self.books.concat(book);
         self.bits_of_books.push(book.total_bits);
     }
@@ -583,7 +583,7 @@ impl CodeBooksPacked {
 impl Default for CodeBooksPacked {
     fn default() -> Self {
         Self {
-            books: BitviseData::default(),
+            books: BitwiseData::default(),
             bits_of_books: Vec::new(),
         }
     }
@@ -627,7 +627,7 @@ impl CodeBooks {
 
     /// * Get the total bytes of the codebook that are able to contain all of the bits.
     pub fn get_total_bytes(&self) -> usize {
-        BitviseData::calc_total_bytes(self.total_bits)
+        BitwiseData::calc_total_bytes(self.total_bits)
     }
 
     /// * Pack the codebook to binary for storage.
@@ -643,7 +643,7 @@ impl CodeBooks {
         let total_bits = bitwriter.total_bits;
         let books = bitwriter.to_bytes();
         Ok(CodeBooksPacked{
-            books: BitviseData::new(&books, total_bits),
+            books: BitwiseData::new(&books, total_bits),
             bits_of_books,
         })
     }
@@ -683,13 +683,13 @@ pub fn remove_codebook_from_setup_header(setup_header: &[u8]) -> Result<Vec<u8>,
     assert_eq!(&setup_header[0..7], b"\x05vorbis", "Checking the vorbis header that is a `setup_header` or not");
 
     let codebooks = CodeBooks::load(&setup_header[7..]).unwrap();
-    let bytes_before_codebook = BitviseData::from_bytes(&setup_header[0..7]);
-    let (_codebook_bits, bits_after_codebook) = BitviseData::new(&setup_header[7..], (setup_header.len() - 7) * 8).split(codebooks.total_bits);
+    let bytes_before_codebook = BitwiseData::from_bytes(&setup_header[0..7]);
+    let (_codebook_bits, bits_after_codebook) = BitwiseData::new(&setup_header[7..], (setup_header.len() - 7) * 8).split(codebooks.total_bits);
 
     // Let's generate the empty codebook.
     let _empty_codebooks = CodeBooks::default().pack()?.books;
 
-    let mut setup_header = BitviseData::default();
+    let mut setup_header = BitwiseData::default();
     setup_header.concat(&bytes_before_codebook);
     setup_header.concat(&_empty_codebooks);
     setup_header.concat(&bits_after_codebook);

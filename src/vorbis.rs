@@ -555,10 +555,10 @@ impl CodeBooksPacked {
     }
 
     /// * Breakdown to each book
-    pub fn split(&self) -> Result<Vec<BitwiseData>, AudioError> {
+    pub fn split(&self) -> Vec<BitwiseData> {
         let num_books = self.bits_of_books.len();
         if num_books == 0 {
-            return Ok(Vec::new());
+            return Vec::new();
         }
         let mut ret = Vec::<BitwiseData>::with_capacity(num_books);
         let mut books = BitwiseData {
@@ -571,7 +571,7 @@ impl CodeBooksPacked {
             ret.push(front);
             books = back;
         }
-        Ok(ret)
+        ret
     }
 
     /// * Concat a packed book without a gap

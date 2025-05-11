@@ -125,7 +125,7 @@ pub fn shift_data_to_back(data: &[u8], bits: usize, total_bits: usize) -> Vec<u8
 }
 
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct BitwiseData {
     /// * Store as bytes
     pub data: Vec<u8>,
@@ -243,15 +243,6 @@ impl BitwiseData {
     pub fn into_bytes(mut self) -> Vec<u8> {
         self.shrink_to_fit();
         self.data
-    }
-}
-
-impl Default for BitwiseData {
-    fn default() -> Self {
-        Self {
-            data: Vec::new(),
-            total_bits: 0,
-        }
     }
 }
 

@@ -204,7 +204,7 @@ impl BitWriter {
 /// * And then I can sum up how many **bits** were used to store the codebooks.
 /// * Vorbis data are all stored in bitwise form, almost anything is not byte-aligned. Split data in byte arrays just won't work on Vorbis data.
 /// * We have to do it in a bitwise way.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct CodeBook {
     pub dim: u16,
     pub entries: u32,
@@ -215,22 +215,6 @@ pub struct CodeBook {
     pub q_quant: i32,
     pub q_sequencep: i32,
     pub quantlist: Vec<i16>,
-}
-
-impl Default for CodeBook {
-    fn default() -> Self {
-        Self {
-            dim: 0,
-            entries: 0,
-            lengthlist: Vec::new(),
-            maptype: 0,
-            q_min: 0,
-            q_delta: 0,
-            q_quant: 0,
-            q_sequencep: 0,
-            quantlist: Vec::new(),
-        }
-    }
 }
 
 impl Debug for CodeBook {
@@ -515,7 +499,7 @@ impl CodeBook {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct CodeBooksPacked {
     /// * The packed code books
     pub books: BitwiseData,
@@ -586,16 +570,7 @@ impl CodeBooksPacked {
     }
 }
 
-impl Default for CodeBooksPacked {
-    fn default() -> Self {
-        Self {
-            books: BitwiseData::default(),
-            bits_of_books: Vec::new(),
-        }
-    }
-}
-
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct CodeBooks {
     /// * The unpacked codebooks
     pub books: Vec<CodeBook>,
@@ -661,16 +636,6 @@ impl From<CodeBooksPacked> for CodeBooks {
         assert_eq!(ret.bits_of_books, packed.bits_of_books, "CodeBooks::from(&CodeBooksPacked), bits_of_books");
         assert_eq!(ret.total_bits, packed.books.total_bits, "CodeBooks::from(&CodeBooksPacked), total_bits");
         ret
-    }
-}
-
-impl Default for CodeBooks {
-    fn default() -> Self {
-        Self {
-            books: Vec::new(),
-            bits_of_books: Vec::new(),
-            total_bits: 0,
-        }
     }
 }
 

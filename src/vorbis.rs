@@ -199,7 +199,7 @@ impl BitWriter {
     }
 }
 
-/// ## This is the parsed Vorbis codebook, it's used to quantify the audio samples.
+/// * This is the parsed Vorbis codebook, it's used to quantify the audio samples.
 /// * This is the re-invented wheel. For this piece of code, this thing is only used to parse the binary form of the codebooks.
 /// * And then I can sum up how many **bits** were used to store the codebooks.
 /// * Vorbis data are all stored in bitwise form, almost anything is not byte-aligned. Split data in byte arrays just won't work on Vorbis data.
@@ -743,7 +743,7 @@ pub fn remove_codebook_from_setup_header(setup_header: &[u8]) -> Result<Vec<u8>,
     Ok(setup_header.to_bytes())
 }
 
-/// ## This function removes all codebooks from the Vorbis Setup Header.
+/// * This function removes all codebooks from the Vorbis Setup Header.
 /// * To think normally, when the codebooks in the Vorbis audio data were removed, the Vorbis audio was unable to decode.
 /// * This function exists because the author of `Vorbis ACM` registered `FORMAT_TAG_OGG_VORBIS3` and `FORMAT_TAG_OGG_VORBIS3P`, and its comment says "Have no codebook header".
 /// * I thought if I wanted to encode/decode this kind of Vorbis audio, I might have to remove the codebooks when encoding.

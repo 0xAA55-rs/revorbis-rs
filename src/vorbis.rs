@@ -194,7 +194,7 @@ impl BitWriter {
     }
 
     /// * Get the inner byte array and consumes the writer.
-    pub fn to_bytes(self) -> Vec<u8> {
+    pub fn into_bytes(self) -> Vec<u8> {
         self.cursor.into_inner()
     }
 }
@@ -581,8 +581,8 @@ impl CodeBooksPacked {
     }
 
     /// * Turn to byte array
-    pub fn to_bytes(self) -> Vec<u8> {
-        self.books.to_bytes()
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.books.into_bytes()
     }
 }
 
@@ -647,7 +647,7 @@ impl CodeBooks {
             bits_of_books.push(bitwriter.total_bits - cur_bit_pos);
         }
         let total_bits = bitwriter.total_bits;
-        let books = bitwriter.to_bytes();
+        let books = bitwriter.into_bytes();
         Ok(CodeBooksPacked{
             books: BitwiseData::new(&books, total_bits),
             bits_of_books,
@@ -740,7 +740,7 @@ pub fn remove_codebook_from_setup_header(setup_header: &[u8]) -> Result<Vec<u8>,
     setup_header.concat(&_empty_codebooks);
     setup_header.concat(&bits_after_codebook);
 
-    Ok(setup_header.to_bytes())
+    Ok(setup_header.into_bytes())
 }
 
 /// * This function removes all codebooks from the Vorbis Setup Header.
@@ -772,5 +772,5 @@ pub fn _remove_codebook_from_ogg_stream(data: &[u8]) -> Result<Vec<u8>, AudioErr
     comment_header_packet.write(&comment_header);
     setup_header_packet.write(&setup_header);
 
-    Ok([identification_header_packet.to_bytes(), comment_header_packet.to_bytes(), setup_header_packet.to_bytes()].into_iter().flatten().collect())
+    Ok([identification_header_packet.into_bytes(), comment_header_packet.into_bytes(), setup_header_packet.into_bytes()].into_iter().flatten().collect())
 }

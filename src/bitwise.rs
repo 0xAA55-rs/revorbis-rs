@@ -240,7 +240,7 @@ impl BitwiseData {
     }
 
     /// * Turn to byte array
-    pub fn to_bytes(mut self) -> Vec<u8> {
+    pub fn into_bytes(mut self) -> Vec<u8> {
         self.shrink_to_fit();
         self.data
     }

@@ -684,37 +684,12 @@ impl Debug for CodeBooks {
     }
 }
 
-/// * This function removes the codebooks from the Vorbis setup header. The setup header was extracted from the Ogg stream.
-/// * Since Vorbis stores data in bitwise form, all of the data are not aligned in bytes, we have to parse it bit by bit.
-/// * After parsing the codebooks, we can sum up the total bits of the codebooks, and then we can replace it with an empty codebook.
-/// * At last, use our `BitwiseData` to concatenate these bit-strings without any gaps.
-pub fn remove_codebook_from_setup_header(setup_header: &[u8]) -> Result<Vec<u8>, AudioWriteError> {
-    // Try to verify if this is the right way to read the codebook
-    assert_eq!(&setup_header[0..7], b"\x05vorbis", "Checking the vorbis header that is a `setup_header` or not");
-
-    let codebooks = CodeBooks::load(&setup_header[7..]).unwrap();
-    let bytes_before_codebook = BitwiseData::from_bytes(&setup_header[0..7]);
-    let (_codebook_bits, bits_after_codebook) = BitwiseData::new(&setup_header[7..], (setup_header.len() - 7) * 8).split(codebooks.total_bits);
-
-    // Let's generate the empty codebook.
-    let _empty_codebooks = CodeBooks::default().pack()?.books;
-
-    let mut setup_header = BitwiseData::default();
-    setup_header.concat(&bytes_before_codebook);
-    setup_header.concat(&_empty_codebooks);
-    setup_header.concat(&bits_after_codebook);
-
-    Ok(setup_header.to_bytes())
-}
-
 /// * This function extracts data from an Ogg packet, the packet contains the Vorbis header.
 /// * There are 3 kinds of Vorbis headers, they are the identification header, the metadata header, and the setup header.
-/// * The codebooks are stored in the setup header. Let's find the codebooks, parse them to get the total length (in bits), and replace it with an empty codebook.
-/// * After that, all of the data were not aligned in bytes, they were just bits, we had to concatenate the bits without any gap by using a bunch of bitwise operations and shifts and bit or/bit and.
-pub fn remove_codebook_from_ogg_page(ogg_packet: &[u8], ogg_packet_len: &mut usize) -> Result<Vec<u8>, AudioWriteError> {
+pub fn get_vorbis_headers_from_ogg_packet_bytes(data: &[u8]) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>, u32), AudioError> {
     use crate::ogg::OggPacket;
-
-    let packet = OggPacket::from_bytes(ogg_packet, ogg_packet_len)?;
+    let mut cursor = CursorVecU8::new(data.to_vec());
+    let ogg_packets = OggPacket::from_cursor(&mut cursor);
 
     let mut ident_header = Vec::<u8>::new();
     let mut metadata_header = Vec::<u8>::new();
@@ -724,38 +699,48 @@ pub fn remove_codebook_from_ogg_page(ogg_packet: &[u8], ogg_packet_len: &mut usi
     // The body consists of a table and segments of data. The table describes the length of each segment of data
     // The Vorbis header must occur at the beginning of a segment
     // And if the header is long enough, it crosses multiple segments
-    // Find out the `setup header`, find the codebook in the `setup header`, and kill it, that's the mission.
     let mut cur_segment_type = 0;
-    for segment in packet.get_segments().iter() {
-        if segment[1..7] == *b"vorbis" {
-            if [1, 3, 5].contains(&segment[0]) {
-                cur_segment_type = segment[0];
-            } // Otherwise it's not a Vorbis header
-        }
-        match cur_segment_type {
-            1 => ident_header.extend(segment),
-            3 => metadata_header.extend(segment),
-            5 => setup_header.extend(segment),
-            _ => return Err(AudioWriteError::InvalidData("vorbis header not found.".to_string())),
+    for packet in ogg_packets.iter() {
+        for segment in packet.get_segments().iter() {
+            if segment[1..7] == *b"vorbis" {
+                if [1, 3, 5].contains(&segment[0]) {
+                    cur_segment_type = segment[0];
+                } // Otherwise it's not a Vorbis header
+            }
+            match cur_segment_type {
+                1 => ident_header.extend(segment),
+                3 => metadata_header.extend(segment),
+                5 => setup_header.extend(segment),
+                o => return Err(AudioError::Unparseable(format!("Invalid Vorbis header type {o}"))),
+            }
         }
     }
 
-    // Our target is to kill the codebooks from the `setup_header`
-    // If this packet doesn't have any `setup_header`
-    // We return.
-    if setup_header.is_empty() {
-        return Ok(ogg_packet[..*ogg_packet_len].to_vec())
-    }
+    Ok((ident_header, metadata_header, setup_header, ogg_packets[0].stream_id))
+}
 
-    let setup_header = remove_codebook_from_setup_header(&setup_header)?;
+/// * This function removes the codebooks from the Vorbis setup header. The setup header was extracted from the Ogg stream.
+/// * Since Vorbis stores data in bitwise form, all of the data are not aligned in bytes, we have to parse it bit by bit.
+/// * After parsing the codebooks, we can sum up the total bits of the codebooks, and then we can replace it with an empty codebook.
+/// * At last, use our `BitwiseData` to concatenate these bit-strings without any gaps.
+pub fn remove_codebook_from_setup_header(setup_header: &[u8]) -> Result<Vec<u8>, AudioError> {
+    // Try to verify if this is the right way to read the codebook
+    assert_eq!(&setup_header[0..7], b"\x05vorbis", "Checking the vorbis header that is a `setup_header` or not");
 
-    let mut new_packet = packet.clone();
-    new_packet.clear();
-    new_packet.write(&ident_header);
-    new_packet.write(&metadata_header);
-    new_packet.write(&setup_header);
+    // Let's find the book, and kill it.
+    let codebooks = CodeBooks::load(&setup_header[7..]).unwrap();
+    let bytes_before_codebook = BitwiseData::from_bytes(&setup_header[0..7]);
+    let (_codebook_bits, bits_after_codebook) = BitwiseData::new(&setup_header[7..], (setup_header.len() - 7) * 8).split(codebooks.total_bits);
 
-    Ok(new_packet.to_bytes())
+    // Let's generate the empty codebook.
+    let _empty_codebooks = CodeBooks::default().pack().unwrap().books;
+
+    let mut setup_header = BitwiseData::default();
+    setup_header.concat(&bytes_before_codebook);
+    setup_header.concat(&_empty_codebooks);
+    setup_header.concat(&bits_after_codebook);
+
+    Ok(setup_header.to_bytes())
 }
 
 /// ## This function removes all codebooks from the Vorbis Setup Header.
@@ -767,15 +752,25 @@ pub fn remove_codebook_from_ogg_page(ogg_packet: &[u8], ogg_packet_len: &mut usi
 /// * And when decoding, he creates a temporary encoder with parameters referenced from the `fmt ` chunk, uses that encoder to create the Vorbis header to feed the decoder, and then can decode the Vorbis audio.
 /// * It has nothing to do with the codebook. I was pranked.
 /// * Thanks, the source code from 2001, and the author from Japan.
-pub fn _remove_codebook_from_ogg_stream(data: &[u8]) -> Result<Vec<u8>, AudioWriteError> {
-    let mut packet_pos = 0usize;
-    let mut packets = Vec::<u8>::new();
+pub fn _remove_codebook_from_ogg_stream(data: &[u8]) -> Result<Vec<u8>, AudioError> {
+    use crate::ogg::{OggPacket, OggPacketType};
+    let (identification_header, comment_header, setup_header, stream_id) = get_vorbis_headers_from_ogg_packet_bytes(data)?;
 
-    while packet_pos < data.len() {
-        let mut packet_size = 0usize;
-        packets.extend(remove_codebook_from_ogg_page(&data[packet_pos..], &mut packet_size)?);
-        packet_pos += packet_size;
+    // Our target is to kill the codebooks from the `setup_header`
+    // If this packet doesn't have any `setup_header`
+    // We return.
+    if setup_header.is_empty() {
+        return Err(AudioError::NoSuchData("There's no setup header in the given Ogg packets.".to_string()));
     }
 
-    Ok(packets)
+    let setup_header = remove_codebook_from_setup_header(&setup_header)?;
+
+    let mut identification_header_packet = OggPacket::new(stream_id, OggPacketType::BeginOfStream, 0);
+    let mut comment_header_packet = OggPacket::new(stream_id, OggPacketType::Continuation, 1);
+    let mut setup_header_packet = OggPacket::new(stream_id, OggPacketType::Continuation, 2);
+    identification_header_packet.write(&identification_header);
+    comment_header_packet.write(&comment_header);
+    setup_header_packet.write(&setup_header);
+
+    Ok([identification_header_packet.to_bytes(), comment_header_packet.to_bytes(), setup_header_packet.to_bytes()].into_iter().flatten().collect())
 }

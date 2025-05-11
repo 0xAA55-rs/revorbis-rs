@@ -158,10 +158,7 @@ impl BitwiseData {
         if residue_bits == 0 {
             return;
         }
-        match self.data.pop() {
-            Some(byte) => self.data.push(byte & MASK8[residue_bits]),
-            None => (),
-        }
+        if let Some(byte) = self.data.pop() { self.data.push(byte & MASK8[residue_bits]) }
     }
 
     /// * Get the number of total bits in the `data` field

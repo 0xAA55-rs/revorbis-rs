@@ -73,7 +73,7 @@ impl<'a> BitReader<'a> {
     /// * Read data bit by bit
     /// * bits <= 32
     pub fn read(&mut self, mut bits: i32) -> Result<i32, AudioReadError> {
-        if bits < 0 || bits > 32 {
+        if !(0..=32).contains(&bits) {
             return Err(AudioReadError::InvalidArguments(format!("Invalid bit number: {bits}")));
         }
         let mut ret: i32;
@@ -162,7 +162,7 @@ impl BitWriter {
 
     /// * Write data in bits, max is 32 bit.
     pub fn write(&mut self, mut value: u32, mut bits: i32) -> Result<(), AudioWriteError> {
-        if bits < 0 || bits > 32 {
+        if !(0..=32).contains(&bits) {
             return Err(AudioWriteError::InvalidArguments(format!("Invalid bits {bits}")));
         }
         value &= MASK[bits as usize];
@@ -261,7 +261,7 @@ impl CodeBook {
                 debugln!("  unordered");
 
                 /* allocated but unused entries? */
-                let unused = if bitreader.read(1)? != 0 {true} else {false};
+                let unused = bitreader.read(1)? != 0;
 
                 /* unordered */
                 self.lengthlist.resize(self.entries as usize, 0);
@@ -382,12 +382,10 @@ impl CodeBook {
             }
             if i >= dim && acc <= entries && acc1 > entries {
                 return vals;
+            } else if i < dim || acc > entries {
+                vals -= 1;
             } else {
-                if i < dim || acc > entries {
-                    vals -= 1;
-                } else {
-                    vals += 1;
-                }
+                vals += 1;
             }
         }
     }
@@ -489,7 +487,7 @@ impl CodeBook {
                 };
 
                 for i in 0..quantvals {
-                    bitwriter.write(self.quantlist[i].abs() as u32, self.q_quant)?;
+                    bitwriter.write(self.quantlist[i].unsigned_abs() as u32, self.q_quant)?;
                 }
             }
             o => return Err(AudioWriteError::InvalidData(format!("Unexpected maptype {o}"))),
@@ -667,11 +665,9 @@ pub fn get_vorbis_headers_from_ogg_packet_bytes(data: &[u8]) -> Result<(Vec<u8>,
     let mut cur_segment_type = 0;
     for packet in ogg_packets.iter() {
         for segment in packet.get_segments().iter() {
-            if segment[1..7] == *b"vorbis" {
-                if [1, 3, 5].contains(&segment[0]) {
-                    cur_segment_type = segment[0];
-                } // Otherwise it's not a Vorbis header
-            }
+            if segment[1..7] == *b"vorbis" && [1, 3, 5].contains(&segment[0]) {
+                cur_segment_type = segment[0];
+            } // Otherwise it's not a Vorbis header
             match cur_segment_type {
                 1 => ident_header.extend(segment),
                 3 => metadata_header.extend(segment),

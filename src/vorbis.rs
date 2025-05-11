@@ -649,6 +649,7 @@ impl Debug for CodeBooks {
 
 /// * This function extracts data from an Ogg packet, the packet contains the Vorbis header.
 /// * There are 3 kinds of Vorbis headers, they are the identification header, the metadata header, and the setup header.
+#[allow(clippy::type_complexity)]
 pub fn get_vorbis_headers_from_ogg_packet_bytes(data: &[u8]) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>, u32), AudioError> {
     use crate::ogg::OggPacket;
     let mut cursor = CursorVecU8::new(data.to_vec());

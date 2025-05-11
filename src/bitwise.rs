@@ -125,6 +125,8 @@ pub fn shift_data_to_back(data: &[u8], bits: usize, total_bits: usize) -> Vec<u8
 }
 
 
+/// * A utility for you to manipulate data bitwise, mainly to concatenate data in bits or to split data from a specific bit position.
+/// * This is mainly used for Vorbis data parsing.
 #[derive(Default, Clone, PartialEq, Eq)]
 pub struct BitwiseData {
     /// * Store as bytes

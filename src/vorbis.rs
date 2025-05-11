@@ -248,8 +248,8 @@ impl CodeBook {
             return Err(AudioReadError::FormatError("Check the `BCV` flag failed.".to_string()));
         }
         /* first the basic parameters */
-        let dim = bitreader.read(16)? as i32;
-        let entries = bitreader.read(24)? as i32;
+        let dim = bitreader.read(16)?;
+        let entries = bitreader.read(24)?;
         if ilog(dim as u32) + ilog(entries as u32) > 24 {
             return Err(AudioReadError::FormatError(format!("{} + {} > 24", ilog(dim as u32), ilog(entries as u32))));
         }
@@ -292,7 +292,7 @@ impl CodeBook {
                 self.lengthlist.resize(self.entries as usize, 0);
                 let mut i = 0;
                 while i < self.entries {
-                    let num = bitreader.read(ilog((self.entries - i) as u32))? as u32;
+                    let num = bitreader.read(ilog(self.entries - i))? as u32;
                     if length > 32 || num > self.entries - i || (num > 0 && (num - 1) >> (length - 1) > 1) {
                         return Err(AudioReadError::FormatError(format!("length({length}) > 32 || num({num}) > entries({}) - i({i}) || (num({num}) > 0 && (num({num}) - 1) >> (length({length}) - 1) > 1)", self.entries)));
                     }

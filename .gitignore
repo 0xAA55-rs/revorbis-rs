@@ -5,6 +5,7 @@
 *.mp3
 *.flac
 *.m4a
+*.ogg
 *.sublime*
 *.exe
 stopplay.bat

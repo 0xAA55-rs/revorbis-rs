@@ -66,9 +66,9 @@ where
 }
 
 /// * Shift an array of bits to the front. In a byte, the lower bits are the front bits.
-pub fn shift_data_to_front(data: &Vec<u8>, bits: usize, total_bits: usize) -> Vec<u8> {
+pub fn shift_data_to_front(data: &[u8], bits: usize, total_bits: usize) -> Vec<u8> {
     if bits == 0 {
-        data.clone()
+        data.to_owned()
     } else if bits >= total_bits {
         Vec::new()
     } else {
@@ -104,14 +104,14 @@ pub fn shift_data_to_front(data: &Vec<u8>, bits: usize, total_bits: usize) -> Ve
 }
 
 /// * Shift an array of bits to the back. In a byte, the higher bits are the back bits.
-pub fn shift_data_to_back(data: &Vec<u8>, bits: usize, total_bits: usize) -> Vec<u8> {
+pub fn shift_data_to_back(data: &[u8], bits: usize, total_bits: usize) -> Vec<u8> {
     if bits == 0 {
-        data.clone()
+        data.to_owned()
     } else {
         let shifted_total_bits = total_bits + bits;
         let data = {
             let bytes_added = align(bits, 8) / 8;
-            let data: Vec<u8> = [vec![0u8; bytes_added], data.clone()].iter().flatten().copied().collect();
+            let data: Vec<u8> = [vec![0u8; bytes_added], data.to_owned()].iter().flatten().copied().collect();
             data
         };
         let bits = bits & 7;

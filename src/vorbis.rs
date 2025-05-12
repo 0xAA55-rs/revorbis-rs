@@ -647,6 +647,75 @@ impl Debug for CodeBooks {
     }
 }
 
+/// * The `VorbisIdentificationHeader` is the Vorbis identification header, the first header
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub struct VorbisIdentificationHeader {
+    pub version: u32,
+    pub channels: u8,
+    pub sample_rate: u32,
+    pub bitrate_upper: u32,
+    pub bitrate_nominal: u32,
+    pub bitrate_lower: u32,
+    pub block_size: [u16; 2],
+    pub framing_flag: bool,
+}
+
+impl VorbisIdentificationHeader {
+    pub fn parse(mut data: &[u8]) -> Result<Self, AudioError> {
+        let ident = &data[..7]; data = &data[7..];
+        if ident != b"\x01vorbis" {
+            Err(AudioError::InvalidData(format!("Not a Vorbis identification header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
+        } else {
+            let version = u32::from_le_bytes(data[0..4].try_into().unwrap()); data = &data[4..];
+            let channels = data[0]; data = &data[1..];
+            let sample_rate = u32::from_le_bytes(data[0..4].try_into().unwrap()); data = &data[4..];
+            let bitrate_upper = u32::from_le_bytes(data[0..4].try_into().unwrap()); data = &data[4..];
+            let bitrate_nominal = u32::from_le_bytes(data[0..4].try_into().unwrap()); data = &data[4..];
+            let bitrate_lower = u32::from_le_bytes(data[0..4].try_into().unwrap()); data = &data[4..];
+            let bs_1 = data[0] & 0x0F;
+            let bs_2 = data[0] >> 4;
+            let block_size = [1 << bs_1, 1 << bs_2]; data = &data[1..];
+            let framing_flag = data[0] & 1 == 1; data = &data[1..];
+            if !data.is_empty()
+            || sample_rate < 1
+            || channels < 1
+            || block_size[0] < 64
+            || block_size[1] < block_size[0]
+            || block_size[1] > 8192
+            || !framing_flag {
+                Err(AudioError::InvalidData("Bad Vorbis identification header.".to_string()))
+            } else {
+                Ok(Self {
+                    version,
+                    channels,
+                    sample_rate,
+                    bitrate_upper,
+                    bitrate_nominal,
+                    bitrate_lower,
+                    block_size,
+                    framing_flag,
+                })
+            }
+        }
+    }
+
+    pub fn pack(&self) -> Vec<u8> {
+        let bs_1 = ilog((self.block_size[0] - 1) as u32) as u8;
+        let bs_2 = ilog((self.block_size[1] - 1) as u32) as u8;
+        [
+            b"\x01vorbis" as &[u8],
+            &self.version.to_le_bytes() as &[u8],
+            &[self.channels],
+            &self.sample_rate.to_le_bytes() as &[u8],
+            &self.bitrate_upper.to_le_bytes() as &[u8],
+            &self.bitrate_nominal.to_le_bytes() as &[u8],
+            &self.bitrate_lower.to_le_bytes() as &[u8],
+            &[bs_1 | (bs_2 << 4)],
+            &[if self.framing_flag {1} else {0}],
+        ].into_iter().flatten().copied().collect()
+    }
+}
+
 /// * This function extracts data from an Ogg packet, the packet contains the Vorbis header.
 /// * There are 3 kinds of Vorbis headers, they are the identification header, the metadata header, and the setup header.
 #[allow(clippy::type_complexity)]

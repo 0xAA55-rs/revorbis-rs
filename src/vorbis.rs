@@ -1183,6 +1183,132 @@ impl Default for VorbisFloor1 {
     }
 }
 
+/// * block-partitioned VQ coded straight residue
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VorbisResidue {
+    pub begin: u32,
+    pub end: u32,
+
+    /// group n vectors per partition
+    pub grouping: u32,
+
+    /// possible codebooks for a partition
+    pub partitions: u8,
+
+    /// partitions ^ groupbook dim
+    pub partvals: u32,
+
+    /// huffbook for partitioning
+    pub groupbook: i8,
+
+    /// expanded out to pointers in lookup
+    pub secondstages: [u8; 64],
+
+    /// list of second stage books
+    pub booklist: [u8; 512],
+}
+
+impl VorbisResidue {
+    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<Self, AudioReadError> {
+        let mut ret = Self {
+            begin: bitreader.read(24)? as u32,
+            end: bitreader.read(24)? as u32,
+            grouping: bitreader.read(24)?.wrapping_add(1) as u32,
+            partitions: bitreader.read(6)?.wrapping_add(1) as u8,
+            groupbook: bitreader.read(8)? as i8,
+            ..Default::default()
+        };
+
+        if !(0..vorbis_info.books.len()).contains(&(ret.groupbook as usize)) {
+            return Err(AudioReadError::InvalidData(format!("Invalid groupbook index {}", ret.groupbook)));
+        }
+
+        let mut acc = 0u32;
+        for i in 0..ret.partitions as usize {
+            let mut cascade = bitreader.read(3)? as u8;
+            let cflag = bitreader.read(1)? != 0;
+            if cflag {
+                cascade |= (bitreader.read(5)? << 3) as u8;
+            }
+            ret.secondstages[i] = cascade;
+            acc += icount(cascade as u32);
+        }
+
+        for i in 0..acc as usize {
+            let book = bitreader.read(8)? as i8;
+            if !(0..vorbis_info.books.len()).contains(&(book as usize)) {
+                return Err(AudioReadError::InvalidData(format!("Invalid book index {book}")));
+            }
+            ret.booklist[i] = book as u8;
+            let book_maptype = vorbis_info.books[book as usize].maptype;
+            if book_maptype == 0 {
+                return Err(AudioReadError::InvalidData(format!("Invalid book maptype {book_maptype}")));
+            }
+        }
+
+        let groupbook = &vorbis_info.books[ret.groupbook as usize];
+        let entries = groupbook.entries;
+        let mut dim = groupbook.dim;
+        let mut partvals = 1u32;
+        if dim < 1 {
+            return Err(AudioReadError::InvalidData(format!("Invalid groupbook dimension {dim}")));
+        }
+        while dim > 0 {
+            partvals *= ret.partitions as u32;
+            if partvals > entries {
+                return Err(AudioReadError::InvalidData(format!("Invalid partvals {partvals}")));
+            }
+            dim -= 1;
+        }
+        ret.partvals = partvals;
+        Ok(ret)
+    }
+
+    /// * Pack to the bitstream
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    where
+        W: Write {
+        let begin_bits = bitwriter.total_bits;
+        let mut acc = 0usize;
+
+        bitwriter.write(self.begin, 24)?;
+        bitwriter.write(self.end, 24)?;
+        bitwriter.write(self.grouping.wrapping_sub(1), 24)?;
+        bitwriter.write(self.partitions.wrapping_sub(1) as u32, 6)?;
+        bitwriter.write(self.groupbook as u32, 8)?;
+        for i in 0..self.partitions as usize {
+            let secondstage = self.secondstages[i] as u32;
+            if ilog(secondstage) > 3 {
+                bitwriter.write(secondstage, 3)?;
+                bitwriter.write(1, 1)?;
+                bitwriter.write(secondstage >> 3, 5)?;
+            } else {
+                bitwriter.write(secondstage, 4)?;
+            }
+            acc += icount(secondstage) as usize;
+        }
+        for i in 0..acc {
+            bitwriter.write(self.booklist[i] as u32, 8)?;
+        }
+
+        Ok(bitwriter.total_bits - begin_bits)
+    }
+}
+
+impl Default for VorbisResidue {
+    fn default() -> Self {
+        Self {
+            begin: 0,
+            end: 0,
+            grouping: 0,
+            partitions: 0,
+            partvals: 0,
+            groupbook: 0,
+            secondstages: [0u8; 64],
+            booklist: [0u8; 512],
+        }
+    }
+}
 
 
 /// * This function extracts data from an Ogg packet, the packet contains the Vorbis header.

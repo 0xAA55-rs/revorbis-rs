@@ -515,7 +515,6 @@ impl CodeBook {
            means that vals really is the greatest value of dim for which
            vals^b->bim <= b->entries */
         /* treat the above as an initial guess */
-        use std::cmp::max;
         vals = max(vals, 1);
         loop {
             let mut acc = 1i32;

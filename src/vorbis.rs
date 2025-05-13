@@ -1712,10 +1712,10 @@ impl VorbisMode {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct VorbisSetupHeader {
     pub static_codebooks: CodeBooks,
-    pub floors: CopiableBuffer<VorbisFloor, 64>,
-    pub residues: CopiableBuffer<VorbisResidue, 64>,
-    pub maps: CopiableBuffer<VorbisMapping, 64>,
-    pub modes: CopiableBuffer<VorbisMode, 64>,
+    pub floors: Vec<VorbisFloor>,
+    pub residues: Vec<VorbisResidue>,
+    pub maps: Vec<VorbisMapping>,
+    pub modes: Vec<VorbisMode>,
 }
 
 impl VorbisSetupHeader {

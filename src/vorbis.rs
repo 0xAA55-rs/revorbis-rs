@@ -750,6 +750,57 @@ impl VorbisIdentificationHeader {
     }
 }
 
+/// * The `VorbisCommentHeader` is the Vorbis comment header, the second header
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub struct VorbisCommentHeader {
+    comments: Vec<String>,
+    vendor: String,
+}
+
+impl VorbisCommentHeader {
+    pub fn parse(data: &[u8]) -> Result<Self, AudioError> {
+        let mut data = data;
+        let ident = read_slice!(data, 7);
+        if ident != b"\x03vorbis" {
+            Err(AudioError::InvalidData(format!("Not a Vorbis comment header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
+        } else {
+            let vendor_len = i32::from_le_bytes(read_slice_4!(data));
+            if vendor_len < 0 || vendor_len as usize > data.len() {
+                return Err(AudioError::InvalidData(format!("Bad vendor string length {vendor_len}")));
+            }
+            let vendor = read_string!(data, vendor_len as usize)?;
+            let num_comments = i32::from_le_bytes(read_slice_4!(data)) as usize;
+            let mut comments = Vec::<String>::with_capacity(num_comments);
+            for _ in 0..num_comments {
+                let comment_len = i32::from_le_bytes(read_slice_4!(data));
+                if comment_len < 0 || comment_len as usize > data.len() {
+                    return Err(AudioError::InvalidData(format!("Bad comment string length {vendor_len}")));
+                }
+                comments.push(read_string!(data, comment_len as usize)?);
+            }
+            Ok(Self{
+                comments,
+                vendor,
+            })
+        }
+    }
+
+    pub fn pack(&self) -> Vec<u8> {
+        [
+            b"\x03vorbis" as &[u8],
+            &((self.vendor.len() as u32).to_le_bytes()) as &[u8],
+            self.vendor.as_bytes() as &[u8],
+        ].into_iter().flatten().copied().chain(self.comments.iter().flat_map(|comment| -> Vec<u8> {
+            [
+                &((comment.len() as u32).to_le_bytes()) as &[u8],
+                comment.as_bytes() as &[u8],
+            ].into_iter().flatten().copied().collect()
+        })).collect()
+    }
+}
+
+
+
 /// * This function extracts data from an Ogg packet, the packet contains the Vorbis header.
 /// * There are 3 kinds of Vorbis headers, they are the identification header, the metadata header, and the setup header.
 #[allow(clippy::type_complexity)]

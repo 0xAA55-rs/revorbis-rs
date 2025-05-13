@@ -230,9 +230,6 @@ impl<'a> BitReader<'a> {
 pub struct BitWriter<W>
 where
     W: Write {
-    /// * The last byte to manipulate
-    pub last_byte: u8,
-
     /// * Currently ends at which bit in the last byte
     pub endbit: u32,
 
@@ -241,30 +238,39 @@ where
 
     /// * The sink
     pub writer: W,
+
+    /// * The cache that holds data to be flushed
+    pub cache: CursorVecU8,
 }
 
 impl<W> BitWriter<W>
 where
     W: Write {
+    const CACHE_SIZE: usize = 1024;
+
     /// * Create a `CursorVecU8` to write
     pub fn new(writer: W) -> Self {
         Self {
-            last_byte: 0,
             endbit: 0,
             total_bits: 0,
             writer,
+            cache: CursorVecU8::new(vec![0u8]),
         }
     }
 
     /// * Get the last byte for modifying it
     pub fn last_byte(&mut self) -> &mut u8 {
-        &mut self.last_byte
+        let v = self.cache.get_mut();
+        let len = v.len();
+        &mut v[len - 1]
     }
 
     /// * Write data by bytes one by one
     fn write_byte(&mut self, byte: u8) -> Result<(), AudioWriteError> {
-        self.writer.write_all(&[self.last_byte])?;
-        self.last_byte = byte;
+        self.cache.write_all(&[byte])?;
+        if self.cache.len() >= Self::CACHE_SIZE {
+            self.flush()?;
+        }
         Ok(())
     }
 
@@ -277,7 +283,7 @@ where
         let origbits = bits;
         bits += self.endbit;
 
-        self.last_byte |= (value << self.endbit) as u8;
+        *self.last_byte() |= (value << self.endbit) as u8;
 
         if bits >= 8 {
             self.write_byte((value >> (8 - self.endbit)) as u8)?;
@@ -300,11 +306,19 @@ where
         self.total_bits += origbits as usize;
         Ok(())
     }
+
+    pub fn flush(&mut self) -> Result<(), AudioWriteError> {
+        self.writer.write_all(&self.cache[..])?;
+        self.cache.clear();
+        Ok(())
+    }
 }
 
 impl BitWriter<CursorVecU8> {
     /// * Get the inner byte array and consumes the writer.
-    pub fn into_bytes(self) -> Vec<u8> {
+    pub fn into_bytes(mut self) -> Vec<u8> {
+        // Make sure the last byte was written
+        self.flush().unwrap();
         self.writer.into_inner()
     }
 }

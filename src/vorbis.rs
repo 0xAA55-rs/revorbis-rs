@@ -142,7 +142,7 @@ fn icount(mut v: u32) -> u32 {
 /// * BitReader: read vorbis data bit by bit
 pub struct BitReader<'a> {
     /// * Currently ends at which bit in the last byte
-    pub endbit: i32,
+    pub endbit: u32,
 
     /// * How many bits did we read in total
     pub total_bits: usize,
@@ -170,7 +170,7 @@ impl<'a> BitReader<'a> {
 
     /// * Read data bit by bit
     /// * bits <= 32
-    pub fn read(&mut self, mut bits: i32) -> Result<i32, AudioReadError> {
+    pub fn read(&mut self, mut bits: u32) -> Result<i32, AudioReadError> {
         if !(0..=32).contains(&bits) {
             return Err(AudioReadError::InvalidArguments(format!("Invalid bit number: {bits}")));
         }
@@ -217,7 +217,7 @@ impl<'a> BitReader<'a> {
 /// * BitWriter: write vorbis data bit by bit
 pub struct BitWriter {
     /// * Currently ends at which bit in the last byte
-    pub endbit: i32,
+    pub endbit: u32,
 
     /// * How many bits did we wrote in total
     pub total_bits: usize,
@@ -310,7 +310,7 @@ pub struct CodeBook {
     pub maptype: u32,
     pub q_min: isize,
     pub q_delta: isize,
-    pub q_quant: i32,
+    pub q_quant: u32,
     pub q_sequencep: i32,
     pub quantlist: Vec<i16>,
 }

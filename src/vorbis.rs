@@ -1350,6 +1350,167 @@ impl Default for VorbisResidue {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VorbisMapping {
+    /// Mapping type
+    pub mapping_type: u16,
+
+    /// Channels
+    pub channels: u8,
+
+    /// <= 16
+    pub submaps: u8,
+
+    /// up to 256 channels in a Vorbis stream
+    pub chmuxlist: [u8; 256],
+
+    /// [mux] submap to floors
+    pub floorsubmap: [u8; 16],
+
+    /// [mux] submap to residue
+    pub residuesubmap: [u8; 16],
+
+    pub coupling_steps: u16,
+    pub coupling_mag: [u8; 256],
+    pub coupling_ang: [u8; 256],
+}
+
+impl VorbisMapping {
+    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader, ident_header: &VorbisIdentificationHeader) -> Result<Self, AudioReadError> {
+        let mapping_type = bitreader.read(16)? as u16;
+
+        if mapping_type != 0 {
+            return Err(AudioReadError::InvalidData(format!("Invalid mapping type {mapping_type}")))
+        }
+
+        let channels = ident_header.channels;
+        let floors = vorbis_info.floors.len() as u8;
+        let residues = vorbis_info.residues.len() as u8;
+        let submaps = if bitreader.read(1)? != 0 {
+            let submaps = bitreader.read(4)?.wrapping_add(1) as u8;
+            if submaps == 0 {
+                return Err(AudioReadError::InvalidData("No submaps.".to_string()));
+            }
+            submaps
+        } else {
+            1
+        };
+        let coupling_steps = if bitreader.read(1)? != 0 {
+            let coupling_steps = bitreader.read(8)?.wrapping_add(1) as u16;
+            if coupling_steps == 0 {
+                return Err(AudioReadError::InvalidData("No coupling steps.".to_string()));
+            }
+            coupling_steps
+        } else {
+            0
+        };
+        let mut ret = Self {
+            submaps,
+            channels,
+            coupling_steps,
+            ..Default::default()
+        };
+
+        for i in 0..ret.coupling_steps as usize {
+            let test_m = bitreader.read(ilog!(channels - 1))? as u8;
+            let test_a = bitreader.read(ilog!(channels - 1))? as u8;
+            ret.coupling_mag[i] = test_m;
+            ret.coupling_ang[i] = test_a;
+            if test_m == test_a
+            || test_m >= channels
+            || test_a >= channels {
+                return Err(AudioReadError::InvalidData(format!("Bad values for test_m = {test_m}, test_a = {test_a}, channels = {channels}")));
+            }
+        }
+
+        let reserved = bitreader.read(2)?;
+        if reserved != 0 {
+            return Err(AudioReadError::InvalidData(format!("Reserved value is {reserved}")));
+        }
+
+        if submaps > 1 {
+            for i in 0..channels as usize {
+                let chmux = bitreader.read(4)? as u8;
+                if chmux >= submaps {
+                    return Err(AudioReadError::InvalidData(format!("Chmux {chmux} >= submaps {submaps}")));
+                }
+                ret.chmuxlist[i] = chmux;
+            }
+        }
+        for i in 0..submaps as usize {
+            let _unused_time_submap = bitreader.read(8)? as u8;
+            let floorsubmap = bitreader.read(8)? as u8;
+            if floorsubmap >= floors {
+                return Err(AudioReadError::InvalidData(format!("floorsubmap {floorsubmap} >= floors {floors}")));
+            }
+            ret.floorsubmap[i] = floorsubmap;
+            let residuesubmap = bitreader.read(8)? as u8;
+            if residuesubmap >= residues {
+                return Err(AudioReadError::InvalidData(format!("floorsubmap {floorsubmap} >= floors {floors}")));
+            }
+            ret.residuesubmap[i] = residuesubmap;
+        }
+        Ok(ret)
+    }
+
+    /// * Pack to the bitstream
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    where
+        W: Write {
+        let begin_bits = bitwriter.total_bits;
+
+        bitwriter.write(self.mapping_type as u32, 16)?;
+        if self.submaps > 1 {
+            bitwriter.write(1, 1)?;
+            bitwriter.write(self.submaps.wrapping_sub(1) as u32, 4)?;
+        } else {
+            bitwriter.write(0, 1)?;
+        }
+
+        if self.coupling_steps > 0 {
+            bitwriter.write(1, 1)?;
+            bitwriter.write(self.coupling_steps.wrapping_sub(1) as u32, 8)?;
+            for i in 0..self.coupling_steps as usize {
+                bitwriter.write(self.coupling_mag[i] as u32, ilog!(self.channels - 1))?;
+                bitwriter.write(self.coupling_ang[i] as u32, ilog!(self.channels - 1))?;
+            }
+        } else {
+            bitwriter.write(0, 1)?;
+        }
+
+        bitwriter.write(0, 2)?;
+
+        if self.submaps > 1 {
+            for i in 0..self.channels as usize {
+                bitwriter.write(self.chmuxlist[i] as u32, 4)?;
+            }
+        }
+        for i in 0..self.submaps as usize {
+            bitwriter.write(0, 8)?; // time submap unused
+            bitwriter.write(self.floorsubmap[i] as u32, 8)?;
+            bitwriter.write(self.residuesubmap[i] as u32, 8)?;
+        }
+
+        Ok(bitwriter.total_bits - begin_bits)
+    }
+}
+
+impl Default for VorbisMapping {
+    fn default() -> Self {
+        Self {
+            mapping_type: 0,
+            channels: 0,
+            submaps: 0,
+            chmuxlist: [0u8; 256],
+            floorsubmap: [0u8; 16],
+            residuesubmap: [0u8; 16],
+            coupling_steps: 0,
+            coupling_mag: [0u8; 256],
+            coupling_ang: [0u8; 256],
+        }
+    }
+}
+
 /// * The `VorbisSetupHeader` is the Vorbis setup header, the second header
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct VorbisSetupHeader {
@@ -1362,7 +1523,7 @@ pub struct VorbisSetupHeader {
 
 impl VorbisSetupHeader {
     /// * Unpack from a bitstream
-    pub fn load(bitreader: &mut BitReader) -> Result<Self, AudioReadError> {
+    pub fn load(bitreader: &mut BitReader, ident_header: &VorbisIdentificationHeader) -> Result<Self, AudioReadError> {
         let ident = read_slice!(bitreader, 7);
         if ident != b"\x05vorbis" {
             Err(AudioReadError::InvalidData(format!("Not a Vorbis comment header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
@@ -1401,6 +1562,13 @@ impl VorbisSetupHeader {
             }
 
             // map backend settings
+            let maps = bitreader.read(6)?.wrapping_add(1) as u8;
+            if maps == 0 {
+                return Err(AudioReadError::InvalidData("No map backend settings.".to_string()));
+            }
+            for _ in 0..maps {
+                ret.maps.push(VorbisMapping::load(bitreader, &ret, &ident_header)?);
+            }
 
             Ok(ret)
         }

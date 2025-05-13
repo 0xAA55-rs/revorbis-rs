@@ -260,6 +260,9 @@ where
 
     /// * Get the last byte for modifying it
     pub fn last_byte(&mut self) -> &mut u8 {
+        if self.cache.is_empty() {
+            self.cache.write_all(&[0u8]);
+        }
         let v = self.cache.get_mut();
         let len = v.len();
         &mut v[len - 1]
@@ -308,9 +311,20 @@ where
     }
 
     pub fn flush(&mut self) -> Result<(), AudioWriteError> {
-        self.writer.write_all(&self.cache[..])?;
-        self.cache.clear();
-        Ok(())
+        if self.cache.is_empty() {
+            Ok(())
+        } else if self.endbit == 0 {
+            self.writer.write_all(&self.cache[..])?;
+            self.cache.clear();
+            Ok(())
+        } else {
+            let len = self.cache.len();
+            let last_byte = self.cache[len - 1];
+            self.writer.write_all(&self.cache[..(len - 1)])?;
+            self.cache.clear();
+            self.cache.write_all(&[last_byte])?;
+            Ok(())
+        }
     }
 }
 

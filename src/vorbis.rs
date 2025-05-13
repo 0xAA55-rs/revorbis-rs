@@ -961,6 +961,24 @@ pub enum VorbisFloor {
     Floor1(VorbisFloor1),
 }
 
+impl VorbisFloor {
+    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<VorbisFloor, AudioReadError> {
+        let floor_type = bitreader.read(16)? as u16;
+        match floor_type {
+            0 => Ok(VorbisFloor0::load(bitreader, vorbis_info)?),
+            1 => Ok(VorbisFloor1::load(bitreader, vorbis_info)?),
+            o => Err(AudioReadError::InvalidData(format!("Invalid floor type {o}"))),
+        }
+    }
+
+    pub fn get_type(&self) -> u16 {
+        match self {
+            Self::Floor0(_) => 0,
+            Self::Floor1(_) => 1,
+        }
+    }
+}
+
 impl Default for VorbisFloor {
     fn default() -> Self {
         Self::Floor0(VorbisFloor0::default())
@@ -1140,6 +1158,7 @@ impl VorbisFloor1 {
         let maxposit = self.postlist[1];
         let rangebits = ilog!(maxposit - 1);
         let mut maxclass = 0u32;
+        bitwriter.write(1u32, 16)?;
         bitwriter.write(self.partitions as u32, 5)?;
         for i in 0..self.partitions as usize {
             let partitions_class = self.partitions_class[i] as u32;
@@ -1195,6 +1214,9 @@ impl Default for VorbisFloor1 {
 /// * block-partitioned VQ coded straight residue
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VorbisResidue {
+    /// The residue type
+    pub residue_type: u16,
+
     pub begin: u32,
     pub end: u32,
 
@@ -1219,7 +1241,14 @@ pub struct VorbisResidue {
 
 impl VorbisResidue {
     pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<Self, AudioReadError> {
+        let residue_type = bitreader.read(16)? as u16;
+
+        if !(0..3).contains(&residue_type) {
+            return Err(AudioReadError::InvalidData(format!("Invalid residue type {residue_type}")))
+        }
+
         let mut ret = Self {
+            residue_type,
             begin: bitreader.read(24)? as u32,
             end: bitreader.read(24)? as u32,
             grouping: bitreader.read(24)?.wrapping_add(1) as u32,
@@ -1280,6 +1309,7 @@ impl VorbisResidue {
         let begin_bits = bitwriter.total_bits;
         let mut acc = 0usize;
 
+        bitwriter.write(self.residue_type as u32, 16)?;
         bitwriter.write(self.begin, 24)?;
         bitwriter.write(self.end, 24)?;
         bitwriter.write(self.grouping.wrapping_sub(1), 24)?;
@@ -1307,6 +1337,7 @@ impl VorbisResidue {
 impl Default for VorbisResidue {
     fn default() -> Self {
         Self {
+            residue_type: 0,
             begin: 0,
             end: 0,
             grouping: 0,
@@ -1320,23 +1351,16 @@ impl Default for VorbisResidue {
 }
 
 /// * The `VorbisSetupHeader` is the Vorbis setup header, the second header
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct VorbisSetupHeader {
     pub books: CodeBooks,
-    pub floors: u8,
-    pub floor_type: [u16; 64],
-    pub floor_param: [VorbisFloor; 64],
-    pub residues: u8,
-    pub residue_type: [u16; 64],
-    pub residue_param: [VorbisResidue; 64],
+    pub floors: CopiableBuffer<VorbisFloor, 64>,
+    pub residues: CopiableBuffer<VorbisResidue, 64>,
+    pub maps: CopiableBuffer<VorbisMapping, 64>,
+
 }
 
 impl VorbisSetupHeader {
-    const VI_TIMEB: u16 = 1;
-    const VI_FLOORB: u16 = 2;
-    const VI_RESB: u16 = 3;
-    const VI_MAPB: u16 = 1;
-
     /// * Unpack from a bitstream
     pub fn load(bitreader: &mut BitReader) -> Result<Self, AudioReadError> {
         let ident = read_slice!(bitreader, 7);
@@ -1353,60 +1377,32 @@ impl VorbisSetupHeader {
             let times = bitreader.read(6)?.wrapping_add(1) as u8;
             for _ in 0..times {
                 let time_type = bitreader.read(16)? as u16;
-                if !(0..Self::VI_TIMEB).contains(&time_type) {
-                    return Err(AudioReadError::InvalidData("The current Vorbis parser can't parse time backend settings.".to_string()));
+                if time_type != 0 {
+                    return Err(AudioReadError::InvalidData(format!("Invalid time type {time_type}")));
                 }
             }
 
             // floor backend settings
-            ret.floors = bitreader.read(6)?.wrapping_add(1) as u8;
-            if ret.floors == 0 {
+            let floors = bitreader.read(6)?.wrapping_add(1) as u8;
+            if floors == 0 {
                 return Err(AudioReadError::InvalidData("No floor backend settings.".to_string()));
             }
-            for i in 0..ret.floors as usize {
-                let floor_type = bitreader.read(16)? as u16;
-                if !(0..Self::VI_FLOORB).contains(&floor_type) {
-                    return Err(AudioReadError::InvalidData(format!("Invalid floor type: {floor_type}")));
-                }
-                ret.floor_type[i] = floor_type;
-                ret.floor_param[i] = match floor_type {
-                    0 => VorbisFloor0::load(bitreader, &ret)?,
-                    1 => VorbisFloor1::load(bitreader, &ret)?,
-                    _ => unreachable!(),
-                }
+            for _ in 0..floors {
+                ret.floors.push(VorbisFloor::load(bitreader, &ret)?);
             }
 
             // residue backend settings
-            ret.residues = bitreader.read(6)?.wrapping_add(1) as u8;
-            if ret.residues == 0 {
+            let residues = bitreader.read(6)?.wrapping_add(1) as u8;
+            if residues == 0 {
                 return Err(AudioReadError::InvalidData("No residues backend settings.".to_string()));
             }
-            for i in 0..ret.residues as usize {
-                let residue_type = bitreader.read(16)? as u16;
-                if !(0..Self::VI_RESB).contains(&residue_type) {
-                    return Err(AudioReadError::InvalidData(format!("Invalid residue type: {residue_type}")));
-                }
-                ret.residue_type[i] = residue_type;
-                ret.residue_param[i] = VorbisResidue::load(bitreader, &ret)?;
+            for _ in 0..residues {
+                ret.residues.push(VorbisResidue::load(bitreader, &ret)?);
             }
 
             // map backend settings
 
             Ok(ret)
-        }
-    }
-}
-
-impl Default for VorbisSetupHeader {
-    fn default() -> Self {
-        Self {
-            books: CodeBooks::default(),
-            floors: 0,
-            floor_type: [0u16; 64],
-            floor_param: [VorbisFloor::default(); 64],
-            residues: 0,
-            residue_type: [0u16; 64],
-            residue_param: [VorbisResidue::default(); 64],
         }
     }
 }

@@ -943,6 +943,65 @@ impl VorbisCommentHeader {
 }
 
 derive_index!(VorbisCommentHeader, String, comments);
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
+#[allow(non_snake_case)]
+pub struct VorbisFloor0 {
+    pub order: u8,
+    pub rate: u16,
+    pub barkmap: u16,
+    pub ampbits: u8,
+    pub ampdB: u8,
+    pub books: CopiableBuffer<u8, 16>,
+
+    /// encode-only config setting hacks for libvorbis
+    pub lessthan: f32,
+
+    /// encode-only config setting hacks for libvorbis
+    pub greaterthan: f32,
+}
+
+impl VorbisFloor0 {
+    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<VorbisFloor, AudioReadError> {
+        let mut ret = Self {
+            order: bitreader.read(8)? as u8,
+            rate: bitreader.read(16)? as u16,
+            barkmap: bitreader.read(16)? as u16,
+            ampbits: bitreader.read(8)? as u8,
+            ampdB: bitreader.read(8)? as u8,
+            ..Default::default()
+        };
+
+        let num_books = bitreader.read(4)?.wrapping_add(1) as usize;
+        if ret.order < 1
+        || ret.rate < 1
+        || ret.barkmap < 1
+        || num_books < 1 {
+            return Err(AudioReadError::InvalidData(format!("Invalid floor 0 data: \norder = {}\nrate = {}\nbarkmap = {}\nnum_books = {num_books}",
+                ret.order,
+                ret.rate,
+                ret.barkmap
+            )));
+        }
+
+        for _ in 0..num_books {
+            let book = bitreader.read(8)? as i8;
+            if book < 0 || book as usize >= vorbis_info.books.len() {
+                return Err(AudioReadError::InvalidData(format!("Invalid book number: {book}")));
+            }
+            let book = book as usize;
+            if vorbis_info.books[book].maptype == 0 {
+                return Err(AudioReadError::InvalidData("Invalid book maptype: 0".to_string()));
+            }
+            if vorbis_info.books[book].dim < 1 {
+                return Err(AudioReadError::InvalidData("Invalid book dimension: 0".to_string()));
+            }
+            ret.books.push(book as u8);
+        }
+
+        Ok(VorbisFloor::Floor0(ret))
+    }
+}
+
     }
 }
 

@@ -1036,6 +1036,15 @@ impl VorbisFloor {
             Self::Floor1(_) => 1,
         }
     }
+
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    where
+        W: Write {
+        match self {
+            Self::Floor0(_) => Ok(0),
+            Self::Floor1(floor1) => floor1.pack(bitwriter),
+        }
+    }
 }
 
 impl Default for VorbisFloor {

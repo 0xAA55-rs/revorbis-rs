@@ -379,7 +379,7 @@ impl Debug for CodeBook {
 impl CodeBook {
     /// unpacks a codebook from the packet buffer into the codebook struct,
     /// readies the codebook auxiliary structures for decode
-    pub fn read(bitreader: &mut BitReader) -> Result<Self, AudioReadError> {
+    pub fn load(bitreader: &mut BitReader) -> Result<Self, AudioReadError> {
         let mut ret = Self::default();
         ret.parse_book(bitreader)?;
         Ok(ret)
@@ -534,7 +534,9 @@ impl CodeBook {
     }
 
     /// * Pack the book into the bitstream
-    pub fn write(&self, bitwriter: &mut BitWriter) -> Result<(), AudioWriteError> {
+    pub fn write<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<(), AudioWriteError>
+    where
+        W: Write {
         /* first the basic parameters */
         bitwriter.write(0x564342, 24)?;
         bitwriter.write(self.dim as u32, 16)?;
@@ -651,7 +653,7 @@ pub struct CodeBooksPacked {
 
 impl CodeBooksPacked {
     pub fn unpack(&self) -> Result<CodeBooks, AudioReadError> {
-        CodeBooks::load(&self.books.data)
+        CodeBooks::load_from_slice(&self.books.data)
     }
 
     /// * Get the number of total bits in the `data` field
@@ -724,15 +726,15 @@ pub struct CodeBooks {
 }
 
 impl CodeBooks {
-    pub fn load(data: &[u8]) -> Result<Self, AudioReadError> {
-        let mut bitreader = BitReader::new(data);
+    /// * Unpack the codebooks from the bitstream
+    pub fn load(bitreader: &mut BitReader) -> Result<Self, AudioReadError> {
         let num_books = (bitreader.read(8)? + 1) as usize;
         let mut books = Vec::<CodeBook>::with_capacity(num_books);
         let mut bits_of_books = Vec::<usize>::with_capacity(num_books);
         for i in 0..num_books {
             debugln!("Reading codebook {i}");
             let cur_bit_pos = bitreader.total_bits;
-            books.push(CodeBook::read(&mut bitreader)?);
+            books.push(CodeBook::load(bitreader)?);
             bits_of_books.push(bitreader.total_bits - cur_bit_pos);
         }
         Ok(Self {
@@ -740,6 +742,12 @@ impl CodeBooks {
             bits_of_books,
             total_bits: bitreader.total_bits,
         })
+    }
+
+    /// * Unpack from a slice
+    pub fn load_from_slice(data: &[u8]) -> Result<Self, AudioReadError> {
+        let mut bitreader = BitReader::new(data);
+        Self::load(&mut bitreader)
     }
 
     /// * Get the total bits of the codebook.
@@ -773,7 +781,7 @@ impl CodeBooks {
 
 impl From<CodeBooksPacked> for CodeBooks {
     fn from(packed: CodeBooksPacked) -> Self {
-        let ret = Self::load(&packed.books.data).unwrap();
+        let ret = Self::load_from_slice(&packed.books.data).unwrap();
         assert_eq!(ret.bits_of_books, packed.bits_of_books, "CodeBooks::from(&CodeBooksPacked), bits_of_books");
         assert_eq!(ret.total_bits, packed.books.total_bits, "CodeBooks::from(&CodeBooksPacked), total_bits");
         ret
@@ -805,31 +813,29 @@ pub struct VorbisIdentificationHeader {
 }
 
 impl VorbisIdentificationHeader {
-    pub fn parse(data: &[u8]) -> Result<Self, AudioError> {
-        let mut data = data;
-        let ident = read_slice!(data, 7);
+    /// * Unpack from a bitstream
+    pub fn load(bitreader: &mut BitReader) -> Result<Self, AudioReadError> {
+        let ident = read_slice!(bitreader, 7);
         if ident != b"\x01vorbis" {
-            Err(AudioError::InvalidData(format!("Not a Vorbis identification header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
+            Err(AudioReadError::InvalidData(format!("Not a Vorbis identification header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
         } else {
-            let version = u32::from_le_bytes(read_slice_4!(data));
-            let channels = read_slice!(data, 1)[0];
-            let sample_rate = u32::from_le_bytes(read_slice_4!(data));
-            let bitrate_upper = u32::from_le_bytes(read_slice_4!(data));
-            let bitrate_nominal = u32::from_le_bytes(read_slice_4!(data));
-            let bitrate_lower = u32::from_le_bytes(read_slice_4!(data));
-            let bs = read_slice!(data, 1)[0];
-            let bs_1 = bs & 0x0F;
-            let bs_2 = bs >> 4;
+            let version = bitreader.read(32)? as u32;
+            let channels = bitreader.read(8)? as u8;
+            let sample_rate = bitreader.read(32)? as u32;
+            let bitrate_upper = bitreader.read(32)? as u32;
+            let bitrate_nominal = bitreader.read(32)? as u32;
+            let bitrate_lower = bitreader.read(32)? as u32;
+            let bs_1 = bitreader.read(4)?;
+            let bs_2 = bitreader.read(4)?;
             let block_size = [1 << bs_1, 1 << bs_2];
-            let framing_flag = read_slice!(data, 1)[0] & 1 == 1;
-            if !data.is_empty()
-            || sample_rate < 1
+            let framing_flag = bitreader.read(1)? & 1 == 1;
+            if sample_rate < 1
             || channels < 1
             || block_size[0] < 64
             || block_size[1] < block_size[0]
             || block_size[1] > 8192
             || !framing_flag {
-                Err(AudioError::InvalidData("Bad Vorbis identification header.".to_string()))
+                Err(AudioReadError::InvalidData("Bad Vorbis identification header.".to_string()))
             } else {
                 Ok(Self {
                     version,
@@ -845,20 +851,29 @@ impl VorbisIdentificationHeader {
         }
     }
 
-    pub fn pack(&self) -> Vec<u8> {
+    /// * Unpack from a slice
+    pub fn load_from_slice(data: &[u8]) -> Result<Self, AudioReadError> {
+        let mut bitreader = BitReader::new(data);
+        Self::load(&mut bitreader)
+    }
+
+    /// * Pack to the bitstream
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    where
+        W: Write {
         let bs_1 = ilog((self.block_size[0] - 1) as u32) as u8;
         let bs_2 = ilog((self.block_size[1] - 1) as u32) as u8;
-        [
-            b"\x01vorbis" as &[u8],
-            &self.version.to_le_bytes() as &[u8],
-            &[self.channels],
-            &self.sample_rate.to_le_bytes() as &[u8],
-            &self.bitrate_upper.to_le_bytes() as &[u8],
-            &self.bitrate_nominal.to_le_bytes() as &[u8],
-            &self.bitrate_lower.to_le_bytes() as &[u8],
-            &[bs_1 | (bs_2 << 4)],
-            &[if self.framing_flag {1} else {0}],
-        ].into_iter().flatten().copied().collect()
+        let begin_bits = bitwriter.total_bits;
+        write_slice!(bitwriter, b"\x01vorbis");
+        bitwriter.write(self.channels as u32, 8)?;
+        bitwriter.write(self.sample_rate, 32)?;
+        bitwriter.write(self.bitrate_upper, 32)?;
+        bitwriter.write(self.bitrate_nominal, 32)?;
+        bitwriter.write(self.bitrate_lower, 32)?;
+        bitwriter.write(bs_1 as u32 - 1, 4)?;
+        bitwriter.write(bs_2 as u32 - 1, 4)?;
+        bitwriter.write(1, 1)?;
+        Ok(bitwriter.total_bits - begin_bits)
     }
 }
 
@@ -870,25 +885,28 @@ pub struct VorbisCommentHeader {
 }
 
 impl VorbisCommentHeader {
-    pub fn parse(data: &[u8]) -> Result<Self, AudioError> {
-        let mut data = data;
-        let ident = read_slice!(data, 7);
+    /// * Unpack from a bitstream
+    pub fn load(bitreader: &mut BitReader) -> Result<Self, AudioReadError> {
+        let ident = read_slice!(bitreader, 7);
         if ident != b"\x03vorbis" {
-            Err(AudioError::InvalidData(format!("Not a Vorbis comment header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
+            Err(AudioReadError::InvalidData(format!("Not a Vorbis comment header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
         } else {
-            let vendor_len = i32::from_le_bytes(read_slice_4!(data));
-            if vendor_len < 0 || vendor_len as usize > data.len() {
-                return Err(AudioError::InvalidData(format!("Bad vendor string length {vendor_len}")));
+            let vendor_len = bitreader.read(32)?;
+            if vendor_len < 0 {
+                return Err(AudioReadError::InvalidData(format!("Bad vendor string length {vendor_len}")));
             }
-            let vendor = read_string!(data, vendor_len as usize)?;
-            let num_comments = i32::from_le_bytes(read_slice_4!(data)) as usize;
-            let mut comments = Vec::<String>::with_capacity(num_comments);
+            let vendor = read_string!(bitreader, vendor_len as usize)?;
+            let num_comments = bitreader.read(32)?;
+            if num_comments < 0 {
+                return Err(AudioReadError::InvalidData(format!("Bad number of comments {num_comments}")));
+            }
+            let mut comments = Vec::<String>::with_capacity(num_comments as usize);
             for _ in 0..num_comments {
-                let comment_len = i32::from_le_bytes(read_slice_4!(data));
-                if comment_len < 0 || comment_len as usize > data.len() {
-                    return Err(AudioError::InvalidData(format!("Bad comment string length {vendor_len}")));
+                let comment_len = bitreader.read(32)?;
+                if comment_len < 0 {
+                    return Err(AudioReadError::InvalidData(format!("Bad comment string length {vendor_len}")));
                 }
-                comments.push(read_string!(data, comment_len as usize)?);
+                comments.push(read_string!(bitreader, comment_len as usize)?);
             }
             Ok(Self{
                 comments,
@@ -897,17 +915,22 @@ impl VorbisCommentHeader {
         }
     }
 
-    pub fn pack(&self) -> Vec<u8> {
-        [
-            b"\x03vorbis" as &[u8],
-            &((self.vendor.len() as u32).to_le_bytes()) as &[u8],
-            self.vendor.as_bytes() as &[u8],
-        ].into_iter().flatten().copied().chain(self.comments.iter().flat_map(|comment| -> Vec<u8> {
-            [
-                &((comment.len() as u32).to_le_bytes()) as &[u8],
-                comment.as_bytes() as &[u8],
-            ].into_iter().flatten().copied().collect()
-        })).collect()
+    /// * Pack to the bitstream
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    where
+        W: Write {
+        let begin_bits = bitwriter.total_bits;
+        write_slice!(bitwriter, b"\x03vorbis");
+        bitwriter.write(self.vendor.len() as u32, 32)?;
+        write_string!(bitwriter, self.vendor);
+        for comment in self.comments.iter() {
+            bitwriter.write(comment.len() as u32, 32)?;
+            write_string!(bitwriter, comment);
+        }
+        Ok(bitwriter.total_bits - begin_bits)
+    }
+}
+
     }
 }
 
@@ -957,7 +980,7 @@ pub fn remove_codebook_from_setup_header(setup_header: &[u8]) -> Result<Vec<u8>,
     assert_eq!(&setup_header[0..7], b"\x05vorbis", "Checking the vorbis header that is a `setup_header` or not");
 
     // Let's find the book, and kill it.
-    let codebooks = CodeBooks::load(&setup_header[7..]).unwrap();
+    let codebooks = CodeBooks::load_from_slice(&setup_header[7..]).unwrap();
     let bytes_before_codebook = BitwiseData::from_bytes(&setup_header[0..7]);
     let (_codebook_bits, bits_after_codebook) = BitwiseData::new(&setup_header[7..], (setup_header.len() - 7) * 8).split(codebooks.total_bits);
 

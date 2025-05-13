@@ -150,6 +150,7 @@ macro_rules! icount {
 }
 
 /// * BitReader: read vorbis data bit by bit
+#[derive(Default)]
 pub struct BitReader<'a> {
     /// * Currently ends at which bit in the last byte
     pub endbit: u32,
@@ -225,6 +226,7 @@ impl<'a> BitReader<'a> {
 }
 
 /// * BitWriter: write vorbis data bit by bit
+#[derive(Default)]
 pub struct BitWriter<W>
 where
     W: Write {

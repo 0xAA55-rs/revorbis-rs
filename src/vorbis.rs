@@ -1002,6 +1002,169 @@ impl VorbisFloor0 {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VorbisFloor1 {
+    /// 0 to 31
+    pub partitions: u8,
+
+    /// 0 to 15
+    pub partitions_class: [u8; 31],
+
+    /// 1 to 8
+    pub class_dim: [u8; 16],
+
+    /// 0,1,2,3 (bits: 1<<n poss)
+    pub class_subs: [u8; 16],
+
+    /// subs ^ dim entries
+    pub class_book: [u8; 16],
+
+    /// [VIF_CLASS][subs]
+    pub class_subbook: [[u8; 8]; 16],
+
+    /// 1 2 3 or 4
+    pub mult: u8,
+
+    /// first two implicit
+    pub postlist: [i16; 65],
+
+    /// encode side analysis parameters
+    pub maxover: f32,
+
+    /// encode side analysis parameters
+    pub maxunder: f32,
+
+    /// encode side analysis parameters
+    pub maxerr: f32,
+
+    /// encode side analysis parameters
+    pub twofitweight: f32,
+
+    /// encode side analysis parameters
+    pub twofitatten: f32,
+
+    pub n: i32,
+}
+
+impl VorbisFloor1 {
+    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<VorbisFloor, AudioReadError> {
+        let mut ret = Self::default();
+        let mut maxclass = 0;
+
+        ret.partitions = bitreader.read(5)? as u8;
+        for i in 0..ret.partitions as usize {
+            let partitions_class = bitreader.read(4)? as u8;
+            maxclass = max(maxclass, partitions_class);
+            ret.partitions_class[i] = partitions_class;
+        }
+
+        for i in 0..(maxclass + 1) as usize {
+            ret.class_dim[i] = bitreader.read(3)? as u8 + 1;
+            ret.class_subs[i] = bitreader.read(2)? as u8;
+            if ret.class_subs[i] != 0 {
+                let class_book = bitreader.read(8)? as u8;
+                if class_book as usize >= vorbis_info.books.len() {
+                    return Err(AudioReadError::InvalidData(format!("Invalid class book index {class_book}, max books is {}", vorbis_info.books.len())));
+                }
+                ret.class_book[i] = class_book;
+            }
+            for k in 0..(1 << ret.class_subs[i]) {
+                let subbook_index = bitreader.read(8)?.wrapping_sub(1);
+                if subbook_index < -1 || subbook_index as usize >= vorbis_info.books.len() {
+                    return Err(AudioReadError::InvalidData(format!("Invalid class subbook index {subbook_index}, max books is {}", vorbis_info.books.len())));
+                }
+                ret.class_subbook[i][k] = subbook_index as u8;
+            }
+        }
+
+        ret.mult = bitreader.read(2)?.wrapping_add(1) as u8;
+        let rangebits = bitreader.read(4)? as u32;
+
+        let mut k = 0usize;
+        let mut count = 0usize;
+        for i in 0..ret.partitions as usize {
+            count += ret.class_dim[ret.partitions_class[i] as usize] as usize;
+            if count > 63 {
+                return Err(AudioReadError::InvalidData(format!("Invalid class dim sum {count}, max is 63")));
+            }
+            while k < count {
+                let t = bitreader.read(rangebits)? as i16;
+                if t < 0 || t >= (1 << rangebits) {
+                    return Err(AudioReadError::InvalidData(format!("Invalid value for postlist {t}")));
+                }
+                ret.postlist[k + 2] = t;
+                k += 1;
+            }
+        }
+        ret.postlist[0] = 0;
+        ret.postlist[1] = 1 << rangebits;
+        ret.postlist[..(count + 2)].sort();
+        for i in 1..(count + 2) {
+            if ret.postlist[i - 1] == ret.postlist[1] {
+                return Err(AudioReadError::InvalidData(format!("Bad postlist: [{}]", format_array!(ret.postlist, ", ", "{}"))));
+            }
+        }
+
+        Ok(VorbisFloor::Floor1(ret))
+    }
+
+    /// * Pack to the bitstream
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    where
+        W: Write {
+        let begin_bits = bitwriter.total_bits;
+        let maxposit = self.postlist[1];
+        let rangebits = ilog((maxposit - 1) as u32);
+        let mut maxclass = 0u32;
+        bitwriter.write(self.partitions as u32, 5)?;
+        for i in 0..self.partitions as usize {
+            let partitions_class = self.partitions_class[i] as u32;
+            maxclass = max(maxclass, partitions_class);
+            bitwriter.write(partitions_class, 4)?;
+        }
+        for i in 0..(maxclass as usize + 1) {
+            bitwriter.write(self.class_dim[i].wrapping_sub(1) as u32, 3)?;
+            bitwriter.write(self.class_subs[i] as u32, 2)?;
+            if self.class_subs[i] != 0 {
+                bitwriter.write(self.class_book[i] as u32, 8)?;
+            }
+            for k in 0..(1 << self.class_subs[i]) as usize {
+                bitwriter.write(self.class_subbook[i][k] as u32 + 1, 8)?;
+            }
+        }
+        bitwriter.write(self.mult.wrapping_sub(1) as u32, 2)?;
+        bitwriter.write(rangebits, 4)?;
+        let mut k = 0usize;
+        let mut count = 0usize;
+        for i in 0..self.partitions as usize {
+            count += self.class_dim[self.partitions_class[i] as usize] as usize;
+            while k < count {
+                bitwriter.write(self.postlist[k + 2] as u32, rangebits)?;
+                k += 1;
+            }
+        }
+        Ok(bitwriter.total_bits - begin_bits)
+    }
+}
+
+impl Default for VorbisFloor1 {
+    fn default() -> Self {
+        Self {
+            partitions: 0,
+            partitions_class: [0u8; 31],
+            class_dim: [0u8; 16],
+            class_subs: [0u8; 16],
+            class_book: [0u8; 16],
+            class_subbook: [[0u8; 8]; 16],
+            mult: 0,
+            postlist: [0i16; 65],
+            maxover: 0.0,
+            maxunder: 0.0,
+            maxerr: 0.0,
+            twofitweight: 0.0,
+            twofitatten: 0.0,
+            n: 0
+        }
     }
 }
 

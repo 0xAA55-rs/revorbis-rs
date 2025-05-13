@@ -1582,6 +1582,50 @@ impl Default for VorbisMapping {
     }
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct VorbisMode {
+    pub block_flag: bool,
+    pub window_type: u16,
+    pub transform_type: u16,
+    pub mapping: u8,
+}
+
+impl VorbisMode {
+    /// * Unpack from the bitstream
+    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<Self, AudioReadError> {
+        let ret = Self {
+            block_flag: read_bits!(bitreader, 1) != 0,
+            window_type: read_bits!(bitreader, 16, u16),
+            transform_type: read_bits!(bitreader, 16, u16),
+            mapping: read_bits!(bitreader, 8, u8),
+        };
+
+        if ret.window_type != 0 {
+            Err(AudioReadError::InvalidData(format!("Bad window type: {}", ret.window_type)))
+        } else if ret.transform_type != 0 {
+            Err(AudioReadError::InvalidData(format!("Bad transfrom type: {}", ret.transform_type)))
+        } else if ret.mapping as usize >= vorbis_info.maps.len() {
+            Err(AudioReadError::InvalidData(format!("Mapping exceeded boundary: {} >= {}", ret.mapping, vorbis_info.maps.len())))
+        } else {
+            Ok(ret)
+        }
+    }
+
+    /// * Pack to the bitstream
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    where
+        W: Write {
+        let begin_bits = bitwriter.total_bits;
+
+        write_bits!(bitwriter, if self.block_flag {1} else {0}, 1);
+        write_bits!(bitwriter, self.window_type, 16);
+        write_bits!(bitwriter, self.transform_type, 16);
+        write_bits!(bitwriter, self.mapping, 8);
+
+        Ok(bitwriter.total_bits - begin_bits)
+    }
+}
+
 /// * The `VorbisSetupHeader` is the Vorbis setup header, the second header
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct VorbisSetupHeader {

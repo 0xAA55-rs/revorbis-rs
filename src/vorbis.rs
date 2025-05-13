@@ -1798,7 +1798,7 @@ pub fn remove_codebook_from_setup_header(setup_header: &[u8]) -> Result<Vec<u8>,
     let (_codebook_bits, bits_after_codebook) = BitwiseData::new(&setup_header[7..], (setup_header.len() - 7) * 8).split(codebooks.total_bits);
 
     // Let's generate the empty codebook.
-    let _empty_codebooks = CodeBooks::default().pack().unwrap().books;
+    let _empty_codebooks = CodeBooks::default().to_packed_codebooks().unwrap().books;
 
     let mut setup_header = BitwiseData::default();
     setup_header.concat(&bytes_before_codebook);

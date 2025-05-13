@@ -121,22 +121,32 @@ macro_rules! derive_index {
     }
 }
 
-fn ilog(mut v: u32) -> u32 {
-    let mut ret = 0;
-    while v != 0 {
-        v >>= 1;
-        ret += 1;
+macro_rules! ilog {
+    ($v:expr) => {
+        {
+            let mut ret = 0;
+            let mut v = $v as u64;
+            while v != 0 {
+                v >>= 1;
+                ret += 1;
+            }
+            ret
+        }
     }
-    ret
 }
 
-fn icount(mut v: u32) -> u32 {
-    let mut ret = 0u32;
-    while v != 0 {
-        ret += v & 1;
-        v >>= 1;
+macro_rules! icount {
+    ($v:expr) => {
+        {
+            let mut ret = 0usize;
+            let mut v = $v as u64;
+            while v != 0 {
+                ret += (v as usize) & 1;
+                v >>= 1;
+            }
+            ret
+        }
     }
-    ret
 }
 
 /// * BitReader: read vorbis data bit by bit
@@ -393,8 +403,8 @@ impl CodeBook {
         /* first the basic parameters */
         let dim = bitreader.read(16)?;
         let entries = bitreader.read(24)?;
-        if ilog(dim as u32) + ilog(entries as u32) > 24 {
-            return Err(AudioReadError::FormatError(format!("{} + {} > 24", ilog(dim as u32), ilog(entries as u32))));
+        if ilog!(dim) + ilog!(entries) > 24 {
+            return Err(AudioReadError::FormatError(format!("{} + {} > 24", ilog!(dim), ilog!(entries))));
         }
         self.dim = dim as u16;
         self.entries = entries as u32;
@@ -435,7 +445,7 @@ impl CodeBook {
                 self.lengthlist.resize(self.entries as usize, 0);
                 let mut i = 0;
                 while i < self.entries {
-                    let num = bitreader.read(ilog(self.entries - i))? as u32;
+                    let num = bitreader.read(ilog!(self.entries - i))? as u32;
                     if length > 32 || num > self.entries - i || (num > 0 && (num - 1) >> (length - 1) > 1) {
                         return Err(AudioReadError::FormatError(format!("length({length}) > 32 || num({num}) > entries({}) - i({i}) || (num({num}) > 0 && (num({num}) - 1) >> (length({length}) - 1) > 1)", self.entries)));
                     }
@@ -570,12 +580,12 @@ impl CodeBook {
                 let last = self.lengthlist[i - 1];
                 if this > last {
                     for _ in last..this {
-                        bitwriter.write(i as u32 - count, ilog(self.entries - count))?;
+                        bitwriter.write(i as u32 - count, ilog!(self.entries - count))?;
                         count = i as u32;
                     }
                 }
             }
-            bitwriter.write(self.entries - count, ilog(self.entries - count))?;
+            bitwriter.write(self.entries - count, ilog!(self.entries - count))?;
         } else {
             /* length random.  Again, we don't code the codeword itself, just
                the length.  This time, though, we have to encode each length */
@@ -872,8 +882,8 @@ impl VorbisIdentificationHeader {
     pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
     where
         W: Write {
-        let bs_1 = ilog((self.block_size[0] - 1) as u32) as u8;
-        let bs_2 = ilog((self.block_size[1] - 1) as u32) as u8;
+        let bs_1 = ilog!(self.block_size[0] - 1);
+        let bs_2 = ilog!(self.block_size[1] - 1);
         let begin_bits = bitwriter.total_bits;
         write_slice!(bitwriter, b"\x01vorbis");
         bitwriter.write(self.channels as u32, 8)?;
@@ -1129,7 +1139,7 @@ impl VorbisFloor1 {
         W: Write {
         let begin_bits = bitwriter.total_bits;
         let maxposit = self.postlist[1];
-        let rangebits = ilog((maxposit - 1) as u32);
+        let rangebits = ilog!(maxposit - 1);
         let mut maxclass = 0u32;
         bitwriter.write(self.partitions as u32, 5)?;
         for i in 0..self.partitions as usize {
@@ -1223,7 +1233,7 @@ impl VorbisResidue {
             return Err(AudioReadError::InvalidData(format!("Invalid groupbook index {}", ret.groupbook)));
         }
 
-        let mut acc = 0u32;
+        let mut acc = 0usize;
         for i in 0..ret.partitions as usize {
             let mut cascade = bitreader.read(3)? as u8;
             let cflag = bitreader.read(1)? != 0;
@@ -1231,10 +1241,10 @@ impl VorbisResidue {
                 cascade |= (bitreader.read(5)? << 3) as u8;
             }
             ret.secondstages[i] = cascade;
-            acc += icount(cascade as u32);
+            acc += icount!(cascade);
         }
 
-        for i in 0..acc as usize {
+        for i in 0..acc {
             let book = bitreader.read(8)? as i8;
             if !(0..vorbis_info.books.len()).contains(&(book as usize)) {
                 return Err(AudioReadError::InvalidData(format!("Invalid book index {book}")));
@@ -1278,14 +1288,14 @@ impl VorbisResidue {
         bitwriter.write(self.groupbook as u32, 8)?;
         for i in 0..self.partitions as usize {
             let secondstage = self.secondstages[i] as u32;
-            if ilog(secondstage) > 3 {
+            if ilog!(secondstage) > 3 {
                 bitwriter.write(secondstage, 3)?;
                 bitwriter.write(1, 1)?;
                 bitwriter.write(secondstage >> 3, 5)?;
             } else {
                 bitwriter.write(secondstage, 4)?;
             }
-            acc += icount(secondstage) as usize;
+            acc += icount!(secondstage);
         }
         for i in 0..acc {
             bitwriter.write(self.booklist[i] as u32, 8)?;

@@ -1131,13 +1131,13 @@ pub struct VorbisFloor1 {
     pub class_book: [u8; 16],
 
     /// [VIF_CLASS][subs]
-    pub class_subbook: [[u8; 8]; 16],
+    pub class_subbook: [[i8; 8]; 16],
 
     /// 1 2 3 or 4
     pub mult: u8,
 
     /// first two implicit
-    pub postlist: [i16; 65],
+    pub postlist: CopiableBuffer<i16, 65>,
 
     /// encode side analysis parameters
     pub maxover: f32,
@@ -1174,18 +1174,17 @@ impl VorbisFloor1 {
             ret.class_dim[i] = read_bits!(bitreader, 3, u8).wrapping_add(1);
             ret.class_subs[i] = read_bits!(bitreader, 2, u8);
             if ret.class_subs[i] != 0 {
-                let class_book = read_bits!(bitreader, 8, u8);
-                if class_book as usize >= static_codebooks.len() {
-                    return Err(AudioReadError::InvalidData(format!("Invalid class book index {class_book}, max books is {}", static_codebooks.len())));
-                }
-                ret.class_book[i] = class_book;
+                ret.class_book[i] = read_bits!(bitreader, 8, u8);
+            }
+            if ret.class_book[i] as usize >= static_codebooks.len() {
+                return Err(AudioReadError::InvalidData(format!("Invalid class book index {}, max books is {}", ret.class_book[i], static_codebooks.len())));
             }
             for k in 0..(1 << ret.class_subs[i]) {
-                let subbook_index = read_bits!(bitreader, 8).wrapping_sub(1);
-                if subbook_index < -1 || subbook_index as usize >= static_codebooks.len() {
+                let subbook_index = read_bits!(bitreader, 8, i8).wrapping_sub(1);
+                if subbook_index < -1 || subbook_index >= static_codebooks.len() as i8 {
                     return Err(AudioReadError::InvalidData(format!("Invalid class subbook index {subbook_index}, max books is {}", static_codebooks.len())));
                 }
-                ret.class_subbook[i][k] = subbook_index as u8;
+                ret.class_subbook[i][k] = subbook_index as i8;
             }
         }
 
@@ -1199,6 +1198,7 @@ impl VorbisFloor1 {
             if count > 63 {
                 return Err(AudioReadError::InvalidData(format!("Invalid class dim sum {count}, max is 63")));
             }
+            ret.postlist.set_len(count + 2);
             while k < count {
                 let t = read_bits!(bitreader, rangebits, i16);
                 if t < 0 || t >= (1 << rangebits) {
@@ -1212,7 +1212,7 @@ impl VorbisFloor1 {
         ret.postlist[1] = 1 << rangebits;
         ret.postlist[..(count + 2)].sort();
         for i in 1..(count + 2) {
-            if ret.postlist[i - 1] == ret.postlist[1] {
+            if ret.postlist[i - 1] == ret.postlist[i] {
                 return Err(AudioReadError::InvalidData(format!("Bad postlist: [{}]", format_array!(ret.postlist, ", ", "{}"))));
             }
         }
@@ -1268,9 +1268,9 @@ impl Default for VorbisFloor1 {
             class_dim: [0u8; 16],
             class_subs: [0u8; 16],
             class_book: [0u8; 16],
-            class_subbook: [[0u8; 8]; 16],
+            class_subbook: [[0i8; 8]; 16],
             mult: 0,
-            postlist: [0i16; 65],
+            postlist: CopiableBuffer::default(),
             maxover: 0.0,
             maxunder: 0.0,
             maxerr: 0.0,

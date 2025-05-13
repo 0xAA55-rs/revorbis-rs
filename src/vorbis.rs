@@ -1198,7 +1198,7 @@ impl VorbisFloor1 {
             if count > 63 {
                 return Err(AudioReadError::InvalidData(format!("Invalid class dim sum {count}, max is 63")));
             }
-            ret.postlist.set_len(count + 2);
+            ret.postlist.resize(count + 2, 0);
             while k < count {
                 let t = read_bits!(bitreader, rangebits);
                 if t < 0 || t >= (1 << rangebits) {

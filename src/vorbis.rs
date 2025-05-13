@@ -1702,6 +1702,51 @@ impl VorbisSetupHeader {
             Ok(ret)
         }
     }
+
+    /// * Pack to the bitstream
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    where
+        W: Write {
+        let begin_bits = bitwriter.total_bits;
+
+        write_slice!(bitwriter, b"\x05vorbis");
+
+        // books
+        self.static_codebooks.pack(bitwriter)?;
+
+        // times
+        write_bits!(bitwriter, 0, 6);
+        write_bits!(bitwriter, 0, 16);
+
+        // floors
+        write_bits!(bitwriter, self.floors.len().wrapping_sub(1), 6);
+        for floor in self.floors.iter() {
+            floor.pack(bitwriter)?;
+        }
+
+        // residues
+        write_bits!(bitwriter, self.residues.len().wrapping_sub(1), 6);
+        for residue in self.residues.iter() {
+            residue.pack(bitwriter)?;
+        }
+
+        // maps
+        write_bits!(bitwriter, self.maps.len().wrapping_sub(1), 6);
+        for map in self.maps.iter() {
+            map.pack(bitwriter)?;
+        }
+
+        // modes
+        write_bits!(bitwriter, self.modes.len().wrapping_sub(1), 6);
+        for mode in self.modes.iter() {
+            mode.pack(bitwriter)?;
+        }
+
+        // EOP
+        write_bits!(bitwriter, 1, 1);
+
+        Ok(bitwriter.total_bits - begin_bits)
+    }
 }
 
 /// * This function extracts data from an Ogg packet, the packet contains the Vorbis header.

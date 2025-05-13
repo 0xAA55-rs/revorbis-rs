@@ -419,13 +419,13 @@ impl Debug for CodeBook {
         f.debug_struct("CodeBook")
         .field("dim", &self.dim)
         .field("entries", &self.entries)
-        .field("lengthlist", &format_args!("[{}]", format_array!(self.lengthlist, " ", "0x{:02x}")))
+        .field("lengthlist", &format_args!("[{}]", format_array!(self.lengthlist, ", ", "{}")))
         .field("maptype", &self.maptype)
         .field("q_min", &self.q_min)
         .field("q_delta", &self.q_delta)
         .field("q_quant", &self.q_quant)
         .field("q_sequencep", &self.q_sequencep)
-        .field("quantlist", &format_args!("[{}]", format_array!(self.quantlist, " ", "0x{:04x}")))
+        .field("quantlist", &format_args!("[{}]", format_array!(self.quantlist, ", ", "{}")))
         .finish()
     }
 }
@@ -1048,7 +1048,7 @@ impl Default for VorbisFloor {
     }
 }
 
-#[derive(Default, Debug, Clone, Copy, PartialEq)]
+#[derive(Default, Clone, Copy, PartialEq)]
 #[allow(non_snake_case)]
 pub struct VorbisFloor0 {
     pub order: i32,
@@ -1107,7 +1107,22 @@ impl VorbisFloor0 {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+impl Debug for VorbisFloor0 {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("VorbisFloor0")
+        .field("order", &self.order)
+        .field("rate", &self.rate)
+        .field("barkmap", &self.barkmap)
+        .field("ampbits", &self.ampbits)
+        .field("ampdB", &self.ampdB)
+        .field("books", &format_args!("[{}]", format_array!(self.books, ", ", "{}")))
+        .field("lessthan", &self.lessthan)
+        .field("greaterthan", &self.greaterthan)
+        .finish()
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
 pub struct VorbisFloor1 {
     /// 0 to 31
     pub partitions: i32,
@@ -1261,6 +1276,27 @@ impl VorbisFloor1 {
     }
 }
 
+impl Debug for VorbisFloor1 {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("VorbisFloor1")
+        .field("partitions", &self.partitions)
+        .field("partitions_class", &format_args!("[{}]", format_array!(self.partitions_class, ", ", "{}")))
+        .field("class_dim", &format_args!("[{}]", format_array!(self.class_dim, ", ", "{}")))
+        .field("class_subs", &format_args!("[{}]", format_array!(self.class_subs, ", ", "{}")))
+        .field("class_book", &format_args!("[{}]", format_array!(self.class_book, ", ", "{}")))
+        .field("class_subbook", &format_args!("[{}]", self.class_subbook.iter().map(|subbook|format!("[{}]", format_array!(subbook, ", ", "{}"))).collect::<Vec<_>>().join(", ")))
+        .field("mult", &self.mult)
+        .field("postlist", &format_args!("[{}]", format_array!(self.postlist, ", ", "{}")))
+        .field("maxover", &self.maxover)
+        .field("maxunder", &self.maxunder)
+        .field("maxerr", &self.maxerr)
+        .field("twofitweight", &self.twofitweight)
+        .field("twofitatten", &self.twofitatten)
+        .field("n", &self.n)
+        .finish()
+    }
+}
+
 impl Default for VorbisFloor1 {
     fn default() -> Self {
         Self {
@@ -1283,7 +1319,7 @@ impl Default for VorbisFloor1 {
 }
 
 /// * block-partitioned VQ coded straight residue
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct VorbisResidue {
     /// The residue type
     pub residue_type: i32,
@@ -1410,6 +1446,22 @@ impl VorbisResidue {
     }
 }
 
+impl Debug for VorbisResidue {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("VorbisResidue")
+        .field("residue_type", &self.residue_type)
+        .field("begin", &self.begin)
+        .field("end", &self.end)
+        .field("grouping", &self.grouping)
+        .field("partitions", &self.partitions)
+        .field("partvals", &self.partvals)
+        .field("groupbook", &self.groupbook)
+        .field("secondstages", &format_args!("[{}]", format_array!(self.secondstages, ", ", "{}")))
+        .field("booklist", &format_args!("[{}]", format_array!(self.booklist, ", ", "{}")))
+        .finish()
+    }
+}
+
 impl Default for VorbisResidue {
     fn default() -> Self {
         Self {
@@ -1426,7 +1478,7 @@ impl Default for VorbisResidue {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct VorbisMapping {
     /// Mapping type
     pub mapping_type: i32,
@@ -1577,6 +1629,22 @@ impl VorbisMapping {
         }
 
         Ok(bitwriter.total_bits - begin_bits)
+    }
+}
+
+impl Debug for VorbisMapping {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("VorbisMapping")
+        .field("mapping_type", &self.mapping_type)
+        .field("channels", &self.channels)
+        .field("submaps", &self.submaps)
+        .field("chmuxlist", &format_args!("[{}]", format_array!(self.chmuxlist, ", ", "{}")))
+        .field("floorsubmap", &format_args!("[{}]", format_array!(self.floorsubmap, ", ", "{}")))
+        .field("residuesubmap", &format_args!("[{}]", format_array!(self.residuesubmap, ", ", "{}")))
+        .field("coupling_steps", &self.coupling_steps)
+        .field("coupling_mag", &format_args!("[{}]", format_array!(self.coupling_mag, ", ", "{}")))
+        .field("coupling_ang", &format_args!("[{}]", format_array!(self.coupling_ang, ", ", "{}")))
+        .finish()
     }
 }
 

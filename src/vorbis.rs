@@ -772,7 +772,7 @@ impl CodeBooks {
 
     /// * Pack the codebook to binary for storage.
     pub fn pack(&self) -> Result<CodeBooksPacked, AudioWriteError> {
-        let mut bitwriter = BitWriter::new();
+        let mut bitwriter = BitWriter::new(CursorVecU8::default());
         let mut bits_of_books = Vec::<usize>::with_capacity(self.books.len());
         bitwriter.write((self.books.len().wrapping_sub(1)) as u32, 8)?;
         for book in self.books.iter() {

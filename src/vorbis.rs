@@ -130,6 +130,15 @@ fn ilog(mut v: u32) -> i32 {
     ret
 }
 
+fn icount(mut v: u32) -> u32 {
+    let mut ret = 0u32;
+    while v != 0 {
+        ret += v & 1;
+        v >>= 1;
+    }
+    ret
+}
+
 /// * BitReader: read vorbis data bit by bit
 pub struct BitReader<'a> {
     /// * Currently ends at which bit in the last byte

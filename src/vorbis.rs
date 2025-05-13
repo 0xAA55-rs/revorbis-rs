@@ -461,7 +461,7 @@ impl CodeBook {
                 /* explicitly populated value mapping */
                 self.q_min = bitreader.read(32)? as isize;
                 self.q_delta = bitreader.read(32)? as isize;
-                self.q_quant = bitreader.read(4)? + 1;
+                self.q_quant = (bitreader.read(4)?.wrapping_add(1)) as u32;
                 self.q_sequencep = bitreader.read(1)?;
 
                 debugln!("    q_min: {}", self.q_min);
@@ -622,7 +622,7 @@ impl CodeBook {
 
                 bitwriter.write(self.q_min as u32, 32)?;
                 bitwriter.write(self.q_delta as u32, 32)?;
-                bitwriter.write((self.q_quant - 1) as u32, 4)?;
+                bitwriter.write(self.q_quant.wrapping_sub(1), 4)?;
                 bitwriter.write(self.q_sequencep as u32, 1)?;
 
                 let quantvals = match self.maptype {

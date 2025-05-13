@@ -1749,7 +1749,7 @@ impl VorbisSetupHeader {
     }
 }
 
-/// * This function extracts data from an Ogg packet, the packet contains the Vorbis header.
+/// * This function extracts data from some Ogg packets, the packets contains the Vorbis headers.
 /// * There are 3 kinds of Vorbis headers, they are the identification header, the metadata header, and the setup header.
 #[allow(clippy::type_complexity)]
 pub fn get_vorbis_headers_from_ogg_packet_bytes(data: &[u8], stream_id: &mut u32) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), AudioError> {

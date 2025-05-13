@@ -300,6 +300,45 @@ impl BitWriter<CursorVecU8> {
 /// * The specialized `BitWriter` that uses `Box<dyn Writer>` as its sink.
 pub type BitWriterObj = BitWriter<Box<dyn Writer>>;
 
+/// * Read a byte array `slice` using the `BitReader`
+macro_rules! read_slice {
+    ($bitreader:ident, $length:expr) => {
+        {
+            let mut ret = Vec::<u8>::with_capacity($length);
+            for _ in 0..$length {
+                ret.push($bitreader.read(8)? as u8);
+            }
+            ret
+        }
+    }
+}
+
+/// * Read a sized string using the `BitReader`
+macro_rules! read_string {
+    ($bitreader:ident, $length:expr) => {
+        {
+            let s = read_slice!($bitreader, $length);
+            match std::str::from_utf8(&s) {
+                Ok(s) => Ok(s.to_string()),
+                Err(_) => Err(AudioError::InvalidData(format!("Parse UTF-8 failed: {}", String::from_utf8_lossy(&s)))),
+            }
+        }
+    }
+}
+
+/// * Write a slice to the `BitWriter`
+macro_rules! write_slice {
+    ($bitwriter:ident, $data:expr) => {
+        for &data in $data.iter() {
+            $bitwriter.write(data as u32, mem::size_of_val(&data) as u32 * 8)?;
+        }
+    }
+}
+
+/// * Write a sized string to the `BitWriter`
+macro_rules! write_string {
+    ($bitwriter:ident, $string:expr) => {
+        write_slice!($bitwriter, $string.as_bytes());
     }
 }
 
@@ -751,37 +790,6 @@ impl Debug for CodeBooks {
     }
 }
 
-macro_rules! read_slice {
-    ($data:ident, $length:expr) => {
-        {
-            let ret = &$data[..$length];
-            $data = &$data[$length..];
-            ret
-        }
-    }
-}
-
-macro_rules! read_slice_4 {
-    ($data:ident) => {
-        {
-            let ret = &$data[..4];
-            $data = &$data[4..];
-            [ret[0], ret[1], ret[2], ret[3]]
-        }
-    }
-}
-
-macro_rules! read_string {
-    ($data:ident, $length:expr) => {
-        {
-            let s = read_slice!($data, $length);
-            match std::str::from_utf8(s) {
-                Ok(s) => Ok(s.to_string()),
-                Err(_) => Err(AudioError::InvalidData(format!("Parse UTF-8 failed: {}", String::from_utf8_lossy(s)))),
-            }
-        }
-    }
-}
 
 /// * The `VorbisIdentificationHeader` is the Vorbis identification header, the first header
 #[derive(Default, Debug, Clone, PartialEq, Eq)]

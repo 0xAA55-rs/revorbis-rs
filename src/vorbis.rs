@@ -1784,6 +1784,19 @@ pub fn get_vorbis_headers_from_ogg_packet_bytes(data: &[u8], stream_id: &mut u32
     Ok((ident_header, metadata_header, setup_header))
 }
 
+/// * This function extracts data from Ogg packets, the packets contains the Vorbis header.
+/// * The packets were all decoded.
+pub fn parse_vorbis_headers(data: &[u8], stream_id: &mut u32) -> Result<(VorbisIdentificationHeader, VorbisCommentHeader, VorbisSetupHeader), AudioReadError> {
+    let (b1, b2, b3) = get_vorbis_headers_from_ogg_packet_bytes(data, stream_id)?;
+    let mut br1 = BitReader::new(&b1);
+    let mut br2 = BitReader::new(&b2);
+    let mut br3 = BitReader::new(&b3);
+    let h1 = VorbisIdentificationHeader::load(&mut br1)?;
+    let h2 = VorbisCommentHeader::load(&mut br2)?;
+    let h3 = VorbisSetupHeader::load(&mut br3, &h1)?;
+    Ok((h1, h2, h3))
+}
+
 /// * This function removes the codebooks from the Vorbis setup header. The setup header was extracted from the Ogg stream.
 /// * Since Vorbis stores data in bitwise form, all of the data are not aligned in bytes, we have to parse it bit by bit.
 /// * After parsing the codebooks, we can sum up the total bits of the codebooks, and then we can replace it with an empty codebook.

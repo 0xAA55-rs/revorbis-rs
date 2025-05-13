@@ -121,7 +121,7 @@ macro_rules! derive_index {
     }
 }
 
-fn ilog(mut v: u32) -> i32 {
+fn ilog(mut v: u32) -> u32 {
     let mut ret = 0;
     while v != 0 {
         v >>= 1;

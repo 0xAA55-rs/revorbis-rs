@@ -8,8 +8,8 @@ use std::{
 };
 use crate::errors::{AudioReadError, AudioError, AudioWriteError};
 use crate::format_array;
-use crate::io_utils::CursorVecU8;
-use crate::utils::BitwiseData;
+use crate::io_utils::{Writer, CursorVecU8};
+use crate::utils::{BitwiseData, CopiableBuffer};
 
 const MASK: [u32; 33] = [
     0x00000000,
@@ -215,51 +215,49 @@ impl<'a> BitReader<'a> {
 }
 
 /// * BitWriter: write vorbis data bit by bit
-pub struct BitWriter {
+pub struct BitWriter<W>
+where
+    W: Write {
+    /// * The last byte to manipulate
+    pub last_byte: u8,
+
     /// * Currently ends at which bit in the last byte
     pub endbit: u32,
 
     /// * How many bits did we wrote in total
     pub total_bits: usize,
 
-    /// * We owns the written data
-    pub cursor: CursorVecU8,
+    /// * The sink
+    pub writer: W,
 }
 
-impl Default for BitWriter {
-    fn default() -> Self {
-        // We must have at least one byte written here because we have to add bits to the last byte.
-        let mut cursor = CursorVecU8::new(vec![0]);
-        cursor.seek(SeekFrom::End(0)).unwrap();
+impl<W> BitWriter<W>
+where
+    W: Write {
+    /// * Create a `CursorVecU8` to write
+    pub fn new(writer: W) -> Self {
         Self {
+            last_byte: 0,
             endbit: 0,
             total_bits: 0,
-            cursor,
+            writer,
         }
-    }
-}
-
-impl BitWriter {
-    /// * Create a `CursorVecU8` to write
-    pub fn new() -> Self {
-        Self::default()
     }
 
     /// * Get the last byte for modifying it
     pub fn last_byte(&mut self) -> &mut u8 {
-        let v = self.cursor.get_mut();
-        let len = v.len();
-        &mut v[len - 1]
+        &mut self.last_byte
     }
 
     /// * Write data by bytes one by one
     fn write_byte(&mut self, byte: u8) -> Result<(), AudioWriteError> {
-        self.cursor.write_all(&[byte])?;
+        self.writer.write_all(&[self.last_byte])?;
+        self.last_byte = byte;
         Ok(())
     }
 
     /// * Write data in bits, max is 32 bit.
-    pub fn write(&mut self, mut value: u32, mut bits: i32) -> Result<(), AudioWriteError> {
+    pub fn write(&mut self, mut value: u32, mut bits: u32) -> Result<(), AudioWriteError> {
         if !(0..=32).contains(&bits) {
             return Err(AudioWriteError::InvalidArguments(format!("Invalid bits {bits}")));
         }
@@ -267,7 +265,7 @@ impl BitWriter {
         let origbits = bits;
         bits += self.endbit;
 
-        *self.last_byte() |= (value << self.endbit) as u8;
+        self.last_byte |= (value << self.endbit) as u8;
 
         if bits >= 8 {
             self.write_byte((value >> (8 - self.endbit)) as u8)?;
@@ -290,10 +288,18 @@ impl BitWriter {
         self.total_bits += origbits as usize;
         Ok(())
     }
+}
 
+impl BitWriter<CursorVecU8> {
     /// * Get the inner byte array and consumes the writer.
     pub fn into_bytes(self) -> Vec<u8> {
-        self.cursor.into_inner()
+        self.writer.into_inner()
+    }
+}
+
+/// * The specialized `BitWriter` that uses `Box<dyn Writer>` as its sink.
+pub type BitWriterObj = BitWriter<Box<dyn Writer>>;
+
     }
 }
 

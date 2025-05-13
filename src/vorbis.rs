@@ -826,14 +826,26 @@ impl CodeBooks {
         self.books.is_empty()
     }
 
+    /// * Pack to bitstream
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    where
+        W: Write {
+        let begin_bits = bitwriter.total_bits;
+        write_bits!(bitwriter, self.books.len().wrapping_sub(1), 8);
+        for book in self.books.iter() {
+            book.pack(bitwriter)?;
+        }
+        Ok(bitwriter.total_bits - begin_bits)
+    }
+
     /// * Pack the codebook to binary for storage.
-    pub fn pack(&self) -> Result<CodeBooksPacked, AudioWriteError> {
+    pub fn to_packed_codebooks(&self) -> Result<CodeBooksPacked, AudioWriteError> {
         let mut bitwriter = BitWriter::new(CursorVecU8::default());
         let mut bits_of_books = Vec::<usize>::with_capacity(self.books.len());
-        bitwriter.write((self.books.len().wrapping_sub(1)) as u32, 8)?;
+        write_bits!(bitwriter, self.books.len().wrapping_sub(1), 8);
         for book in self.books.iter() {
             let cur_bit_pos = bitwriter.total_bits;
-            book.write(&mut bitwriter)?;
+            book.pack(&mut bitwriter)?;
             bits_of_books.push(bitwriter.total_bits - cur_bit_pos);
         }
         let total_bits = bitwriter.total_bits;

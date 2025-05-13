@@ -1633,7 +1633,7 @@ pub struct VorbisSetupHeader {
     pub floors: CopiableBuffer<VorbisFloor, 64>,
     pub residues: CopiableBuffer<VorbisResidue, 64>,
     pub maps: CopiableBuffer<VorbisMapping, 64>,
-
+    pub modes: CopiableBuffer<VorbisMode, 64>,
 }
 
 impl VorbisSetupHeader {
@@ -1685,6 +1685,18 @@ impl VorbisSetupHeader {
                 ret.maps.push(VorbisMapping::load(bitreader, &ret, ident_header)?);
             }
 
+            // mode settings
+            let modes = read_bits!(bitreader, 6, u8).wrapping_add(1);
+            if modes == 0 {
+                return Err(AudioReadError::InvalidData("No mode settings.".to_string()));
+            }
+            for _ in 0..modes {
+                ret.modes.push(VorbisMode::load(bitreader, &ret)?);
+            }
+
+            let eop = read_bits!(bitreader, 1) != 0;
+            if !eop {
+                return Err(AudioReadError::InvalidData("Missing End Of Packet bit.".to_string()));
             }
 
             Ok(ret)

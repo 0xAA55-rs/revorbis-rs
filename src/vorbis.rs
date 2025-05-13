@@ -943,6 +943,21 @@ impl VorbisCommentHeader {
 }
 
 derive_index!(VorbisCommentHeader, String, comments);
+
+/// * The `VorbisFloor` for floor types
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(clippy::large_enum_variant)]
+pub enum VorbisFloor {
+    Floor0(VorbisFloor0),
+    Floor1(VorbisFloor1),
+}
+
+impl Default for VorbisFloor {
+    fn default() -> Self {
+        Self::Floor0(VorbisFloor0::default())
+    }
+}
+
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
 #[allow(non_snake_case)]
 pub struct VorbisFloor0 {

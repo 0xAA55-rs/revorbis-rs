@@ -886,16 +886,16 @@ impl VorbisIdentificationHeader {
         if ident != b"\x01vorbis" {
             Err(AudioReadError::InvalidData(format!("Not a Vorbis identification header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
         } else {
-            let version = bitreader.read(32)? as u32;
-            let channels = bitreader.read(8)? as u8;
-            let sample_rate = bitreader.read(32)? as u32;
-            let bitrate_upper = bitreader.read(32)? as u32;
-            let bitrate_nominal = bitreader.read(32)? as u32;
-            let bitrate_lower = bitreader.read(32)? as u32;
-            let bs_1 = bitreader.read(4)?;
-            let bs_2 = bitreader.read(4)?;
+            let version = read_bits!(bitreader, 32, u32);
+            let channels = read_bits!(bitreader, 8, u8);
+            let sample_rate = read_bits!(bitreader, 32, u32);
+            let bitrate_upper = read_bits!(bitreader, 32, u32);
+            let bitrate_nominal = read_bits!(bitreader, 32, u32);
+            let bitrate_lower = read_bits!(bitreader, 32, u32);
+            let bs_1 = read_bits!(bitreader, 4);
+            let bs_2 = read_bits!(bitreader, 4);
             let block_size = [1 << bs_1, 1 << bs_2];
-            let framing_flag = bitreader.read(1)? & 1 == 1;
+            let framing_flag = read_bits!(bitreader, 1) & 1 == 1;
             if sample_rate < 1
             || channels < 1
             || block_size[0] < 64
@@ -928,18 +928,18 @@ impl VorbisIdentificationHeader {
     pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
     where
         W: Write {
-        let bs_1 = ilog!(self.block_size[0] - 1);
-        let bs_2 = ilog!(self.block_size[1] - 1);
+        let bs_1: u8 = ilog!(self.block_size[0] - 1);
+        let bs_2: u8 = ilog!(self.block_size[1] - 1);
         let begin_bits = bitwriter.total_bits;
         write_slice!(bitwriter, b"\x01vorbis");
-        bitwriter.write(self.channels as u32, 8)?;
-        bitwriter.write(self.sample_rate, 32)?;
-        bitwriter.write(self.bitrate_upper, 32)?;
-        bitwriter.write(self.bitrate_nominal, 32)?;
-        bitwriter.write(self.bitrate_lower, 32)?;
-        bitwriter.write(bs_1 as u32 - 1, 4)?;
-        bitwriter.write(bs_2 as u32 - 1, 4)?;
-        bitwriter.write(1, 1)?;
+        write_bits!(bitwriter, self.channels, 8);
+        write_bits!(bitwriter, self.sample_rate, 32);
+        write_bits!(bitwriter, self.bitrate_upper, 32);
+        write_bits!(bitwriter, self.bitrate_nominal, 32);
+        write_bits!(bitwriter, self.bitrate_lower, 32);
+        write_bits!(bitwriter, bs_1.wrapping_sub(1), 4);
+        write_bits!(bitwriter, bs_2.wrapping_sub(1), 4);
+        write_bits!(bitwriter, 1, 1);
         Ok(bitwriter.total_bits - begin_bits)
     }
 }
@@ -958,18 +958,18 @@ impl VorbisCommentHeader {
         if ident != b"\x03vorbis" {
             Err(AudioReadError::InvalidData(format!("Not a Vorbis comment header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
         } else {
-            let vendor_len = bitreader.read(32)?;
+            let vendor_len = read_bits!(bitreader, 32);
             if vendor_len < 0 {
                 return Err(AudioReadError::InvalidData(format!("Bad vendor string length {vendor_len}")));
             }
             let vendor = read_string!(bitreader, vendor_len as usize)?;
-            let num_comments = bitreader.read(32)?;
+            let num_comments = read_bits!(bitreader, 32);
             if num_comments < 0 {
                 return Err(AudioReadError::InvalidData(format!("Bad number of comments {num_comments}")));
             }
             let mut comments = Vec::<String>::with_capacity(num_comments as usize);
             for _ in 0..num_comments {
-                let comment_len = bitreader.read(32)?;
+                let comment_len = read_bits!(bitreader, 32);
                 if comment_len < 0 {
                     return Err(AudioReadError::InvalidData(format!("Bad comment string length {vendor_len}")));
                 }
@@ -1053,15 +1053,15 @@ impl VorbisFloor0 {
     pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<VorbisFloor, AudioReadError> {
         let static_codebooks = &vorbis_info.static_codebooks;
         let mut ret = Self {
-            order: bitreader.read(8)? as u8,
-            rate: bitreader.read(16)? as u16,
-            barkmap: bitreader.read(16)? as u16,
-            ampbits: bitreader.read(8)? as u8,
-            ampdB: bitreader.read(8)? as u8,
+            order: read_bits!(bitreader, 8, u8),
+            rate: read_bits!(bitreader, 16, u16),
+            barkmap: read_bits!(bitreader, 16, u16),
+            ampbits: read_bits!(bitreader, 8, u8),
+            ampdB: read_bits!(bitreader, 8, u8),
             ..Default::default()
         };
 
-        let num_books = bitreader.read(4)?.wrapping_add(1) as usize;
+        let num_books = read_bits!(bitreader, 4).wrapping_add(1) as usize;
         if ret.order < 1
         || ret.rate < 1
         || ret.barkmap < 1
@@ -1074,7 +1074,7 @@ impl VorbisFloor0 {
         }
 
         for _ in 0..num_books {
-            let book = bitreader.read(8)? as i8;
+            let book = read_bits!(bitreader, 8, i8);
             if book < 0 || book as usize >= static_codebooks.len() {
                 return Err(AudioReadError::InvalidData(format!("Invalid book number: {book}")));
             }
@@ -1142,25 +1142,25 @@ impl VorbisFloor1 {
         let mut ret = Self::default();
         let mut maxclass = 0;
 
-        ret.partitions = bitreader.read(5)? as u8;
+        ret.partitions = read_bits!(bitreader, 5, u8);
         for i in 0..ret.partitions as usize {
-            let partitions_class = bitreader.read(4)? as u8;
+            let partitions_class = read_bits!(bitreader, 4, u8);
             maxclass = max(maxclass, partitions_class);
             ret.partitions_class[i] = partitions_class;
         }
 
         for i in 0..(maxclass + 1) as usize {
-            ret.class_dim[i] = bitreader.read(3)? as u8 + 1;
-            ret.class_subs[i] = bitreader.read(2)? as u8;
+            ret.class_dim[i] = read_bits!(bitreader, 3, u8).wrapping_add(1);
+            ret.class_subs[i] = read_bits!(bitreader, 2, u8);
             if ret.class_subs[i] != 0 {
-                let class_book = bitreader.read(8)? as u8;
+                let class_book = read_bits!(bitreader, 8, u8);
                 if class_book as usize >= static_codebooks.len() {
                     return Err(AudioReadError::InvalidData(format!("Invalid class book index {class_book}, max books is {}", static_codebooks.len())));
                 }
                 ret.class_book[i] = class_book;
             }
             for k in 0..(1 << ret.class_subs[i]) {
-                let subbook_index = bitreader.read(8)?.wrapping_sub(1);
+                let subbook_index = read_bits!(bitreader, 8).wrapping_sub(1);
                 if subbook_index < -1 || subbook_index as usize >= static_codebooks.len() {
                     return Err(AudioReadError::InvalidData(format!("Invalid class subbook index {subbook_index}, max books is {}", static_codebooks.len())));
                 }
@@ -1168,8 +1168,8 @@ impl VorbisFloor1 {
             }
         }
 
-        ret.mult = bitreader.read(2)?.wrapping_add(1) as u8;
-        let rangebits = bitreader.read(4)? as u32;
+        ret.mult = read_bits!(bitreader, 2, u8).wrapping_add(1);
+        let rangebits = read_bits!(bitreader, 4, u32);
 
         let mut k = 0usize;
         let mut count = 0usize;
@@ -1179,7 +1179,7 @@ impl VorbisFloor1 {
                 return Err(AudioReadError::InvalidData(format!("Invalid class dim sum {count}, max is 63")));
             }
             while k < count {
-                let t = bitreader.read(rangebits)? as i16;
+                let t = read_bits!(bitreader, rangebits, i16);
                 if t < 0 || t >= (1 << rangebits) {
                     return Err(AudioReadError::InvalidData(format!("Invalid value for postlist {t}")));
                 }
@@ -1207,31 +1207,31 @@ impl VorbisFloor1 {
         let maxposit = self.postlist[1];
         let rangebits = ilog!(maxposit - 1);
         let mut maxclass = 0u32;
-        bitwriter.write(1u32, 16)?;
-        bitwriter.write(self.partitions as u32, 5)?;
+        write_bits!(bitwriter, 1u32, 16);
+        write_bits!(bitwriter, self.partitions as u32, 5);
         for i in 0..self.partitions as usize {
             let partitions_class = self.partitions_class[i] as u32;
             maxclass = max(maxclass, partitions_class);
-            bitwriter.write(partitions_class, 4)?;
+            write_bits!(bitwriter, partitions_class, 4);
         }
         for i in 0..(maxclass as usize + 1) {
-            bitwriter.write(self.class_dim[i].wrapping_sub(1) as u32, 3)?;
-            bitwriter.write(self.class_subs[i] as u32, 2)?;
+            write_bits!(bitwriter, self.class_dim[i].wrapping_sub(1) as u32, 3);
+            write_bits!(bitwriter, self.class_subs[i] as u32, 2);
             if self.class_subs[i] != 0 {
-                bitwriter.write(self.class_book[i] as u32, 8)?;
+                write_bits!(bitwriter, self.class_book[i] as u32, 8);
             }
             for k in 0..(1 << self.class_subs[i]) as usize {
-                bitwriter.write(self.class_subbook[i][k] as u32 + 1, 8)?;
+                write_bits!(bitwriter, self.class_subbook[i][k] as u32 + 1, 8);
             }
         }
-        bitwriter.write(self.mult.wrapping_sub(1) as u32, 2)?;
-        bitwriter.write(rangebits, 4)?;
+        write_bits!(bitwriter, self.mult.wrapping_sub(1) as u32, 2);
+        write_bits!(bitwriter, rangebits, 4);
         let mut k = 0usize;
         let mut count = 0usize;
         for i in 0..self.partitions as usize {
             count += self.class_dim[self.partitions_class[i] as usize] as usize;
             while k < count {
-                bitwriter.write(self.postlist[k + 2] as u32, rangebits)?;
+                write_bits!(bitwriter, self.postlist[k + 2] as u32, rangebits);
                 k += 1;
             }
         }
@@ -1585,16 +1585,16 @@ impl VorbisSetupHeader {
             };
 
             // time backend settings; hooks are unused
-            let times = bitreader.read(6)?.wrapping_add(1) as u8;
+            let times = read_bits!(bitreader, 6, u8).wrapping_add(1);
             for _ in 0..times {
-                let time_type = bitreader.read(16)? as u16;
+                let time_type = read_bits!(bitreader, 16, u16);
                 if time_type != 0 {
                     return Err(AudioReadError::InvalidData(format!("Invalid time type {time_type}")));
                 }
             }
 
             // floor backend settings
-            let floors = bitreader.read(6)?.wrapping_add(1) as u8;
+            let floors = read_bits!(bitreader, 6, u8).wrapping_add(1);
             if floors == 0 {
                 return Err(AudioReadError::InvalidData("No floor backend settings.".to_string()));
             }
@@ -1603,7 +1603,7 @@ impl VorbisSetupHeader {
             }
 
             // residue backend settings
-            let residues = bitreader.read(6)?.wrapping_add(1) as u8;
+            let residues = read_bits!(bitreader, 6, u8).wrapping_add(1);
             if residues == 0 {
                 return Err(AudioReadError::InvalidData("No residues backend settings.".to_string()));
             }
@@ -1612,12 +1612,14 @@ impl VorbisSetupHeader {
             }
 
             // map backend settings
-            let maps = bitreader.read(6)?.wrapping_add(1) as u8;
+            let maps = read_bits!(bitreader, 6, u8).wrapping_add(1);
             if maps == 0 {
                 return Err(AudioReadError::InvalidData("No map backend settings.".to_string()));
             }
             for _ in 0..maps {
-                ret.maps.push(VorbisMapping::load(bitreader, &ret, &ident_header)?);
+                ret.maps.push(VorbisMapping::load(bitreader, &ret, ident_header)?);
+            }
+
             }
 
             Ok(ret)

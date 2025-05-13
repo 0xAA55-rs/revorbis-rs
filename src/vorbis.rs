@@ -18,7 +18,6 @@ const MASK: [u32; 33] = [
 ];
 
 const SHOW_DEBUG: bool = false;
-#[allow(unused_macros)]
 macro_rules! debugln {
     () => {
         if SHOW_DEBUG {

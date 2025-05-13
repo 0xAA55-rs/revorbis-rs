@@ -261,7 +261,7 @@ where
     /// * Get the last byte for modifying it
     pub fn last_byte(&mut self) -> &mut u8 {
         if self.cache.is_empty() {
-            self.cache.write_all(&[0u8]);
+            self.cache.write_all(&[0u8]).unwrap();
         }
         let v = self.cache.get_mut();
         let len = v.len();

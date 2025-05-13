@@ -1,5 +1,11 @@
 #![allow(dead_code)]
-use std::{fmt::{self, Debug, Formatter}, io::{Seek, Write, SeekFrom}};
+use std::{
+    cmp::max,
+    fmt::{self, Debug, Formatter},
+    io::Write,
+    mem,
+    ops::{Index, IndexMut, Range, RangeFrom, RangeTo, RangeFull},
+};
 use crate::errors::{AudioReadError, AudioError, AudioWriteError};
 use crate::format_array;
 use crate::io_utils::CursorVecU8;
@@ -29,6 +35,90 @@ macro_rules! debugln {
             println!($($arg)*);
         }
     };
+}
+
+macro_rules! derive_index {
+    ($object:ident, $target:ident, $member:tt) => {
+        impl Index<usize> for $object {
+            type Output = $target;
+
+            #[track_caller]
+            fn index(&self, index: usize) -> &$target {
+                &self.$member[index]
+            }
+        }
+
+        impl IndexMut<usize> for $object {
+            #[track_caller]
+            fn index_mut(&mut self, index: usize) -> &mut $target {
+                &mut self.$member[index]
+            }
+        }
+
+        impl Index<Range<usize>> for $object {
+            type Output = [$target];
+
+            #[track_caller]
+            fn index(&self, range: Range<usize>) -> &[$target] {
+                &self.$member[range]
+            }
+        }
+
+        impl IndexMut<Range<usize>> for $object {
+            #[track_caller]
+            fn index_mut(&mut self, range: Range<usize>) -> &mut [$target] {
+                &mut self.$member[range]
+            }
+        }
+
+        impl Index<RangeFrom<usize>> for $object {
+            type Output = [$target];
+
+            #[track_caller]
+            fn index(&self, range: RangeFrom<usize>) -> &[$target] {
+                &self.$member[range]
+            }
+        }
+
+        impl IndexMut<RangeFrom<usize>> for $object {
+            #[track_caller]
+            fn index_mut(&mut self, range: RangeFrom<usize>) -> &mut [$target] {
+                &mut self.$member[range]
+            }
+        }
+
+        impl Index<RangeTo<usize>> for $object {
+            type Output = [$target];
+
+            #[track_caller]
+            fn index(&self, range: RangeTo<usize>) -> &[$target] {
+                &self.$member[range]
+            }
+        }
+
+        impl IndexMut<RangeTo<usize>> for $object {
+            #[track_caller]
+            fn index_mut(&mut self, range: RangeTo<usize>) -> &mut [$target] {
+                &mut self.$member[range]
+            }
+        }
+
+        impl Index<RangeFull> for $object {
+            type Output = [$target];
+
+            #[track_caller]
+            fn index(&self, _range: RangeFull) -> &[$target] {
+                &self.$member[..]
+            }
+        }
+
+        impl IndexMut<RangeFull> for $object {
+            #[track_caller]
+            fn index_mut(&mut self, _range: RangeFull) -> &mut [$target] {
+                &mut self.$member[..]
+            }
+        }
+    }
 }
 
 fn ilog(mut v: u32) -> i32 {

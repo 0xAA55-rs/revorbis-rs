@@ -1310,6 +1310,97 @@ impl Default for VorbisResidue {
     }
 }
 
+/// * The `VorbisSetupHeader` is the Vorbis setup header, the second header
+#[derive(Debug, Clone, PartialEq)]
+pub struct VorbisSetupHeader {
+    pub books: CodeBooks,
+    pub floors: u8,
+    pub floor_type: [u16; 64],
+    pub floor_param: [VorbisFloor; 64],
+    pub residues: u8,
+    pub residue_type: [u16; 64],
+    pub residue_param: [VorbisResidue; 64],
+}
+
+impl VorbisSetupHeader {
+    const VI_TIMEB: u16 = 1;
+    const VI_FLOORB: u16 = 2;
+    const VI_RESB: u16 = 3;
+    const VI_MAPB: u16 = 1;
+
+    /// * Unpack from a bitstream
+    pub fn load(bitreader: &mut BitReader) -> Result<Self, AudioReadError> {
+        let ident = read_slice!(bitreader, 7);
+        if ident != b"\x05vorbis" {
+            Err(AudioReadError::InvalidData(format!("Not a Vorbis comment header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
+        } else {
+            let mut ret = Self {
+                // codebooks
+                books: CodeBooks::load(bitreader)?,
+                ..Default::default()
+            };
+
+            // time backend settings; hooks are unused
+            let times = bitreader.read(6)?.wrapping_add(1) as u8;
+            for _ in 0..times {
+                let time_type = bitreader.read(16)? as u16;
+                if !(0..Self::VI_TIMEB).contains(&time_type) {
+                    return Err(AudioReadError::InvalidData("The current Vorbis parser can't parse time backend settings.".to_string()));
+                }
+            }
+
+            // floor backend settings
+            ret.floors = bitreader.read(6)?.wrapping_add(1) as u8;
+            if ret.floors == 0 {
+                return Err(AudioReadError::InvalidData("No floor backend settings.".to_string()));
+            }
+            for i in 0..ret.floors as usize {
+                let floor_type = bitreader.read(16)? as u16;
+                if !(0..Self::VI_FLOORB).contains(&floor_type) {
+                    return Err(AudioReadError::InvalidData(format!("Invalid floor type: {floor_type}")));
+                }
+                ret.floor_type[i] = floor_type;
+                ret.floor_param[i] = match floor_type {
+                    0 => VorbisFloor0::load(bitreader, &ret)?,
+                    1 => VorbisFloor1::load(bitreader, &ret)?,
+                    _ => unreachable!(),
+                }
+            }
+
+            // residue backend settings
+            ret.residues = bitreader.read(6)?.wrapping_add(1) as u8;
+            if ret.residues == 0 {
+                return Err(AudioReadError::InvalidData("No residues backend settings.".to_string()));
+            }
+            for i in 0..ret.residues as usize {
+                let residue_type = bitreader.read(16)? as u16;
+                if !(0..Self::VI_RESB).contains(&residue_type) {
+                    return Err(AudioReadError::InvalidData(format!("Invalid residue type: {residue_type}")));
+                }
+                ret.residue_type[i] = residue_type;
+                ret.residue_param[i] = VorbisResidue::load(bitreader, &ret)?;
+            }
+
+            // map backend settings
+
+            Ok(ret)
+        }
+    }
+}
+
+impl Default for VorbisSetupHeader {
+    fn default() -> Self {
+        Self {
+            books: CodeBooks::default(),
+            floors: 0,
+            floor_type: [0u16; 64],
+            floor_param: [VorbisFloor::default(); 64],
+            residues: 0,
+            residue_type: [0u16; 64],
+            residue_param: [VorbisResidue::default(); 64],
+        }
+    }
+}
 
 /// * This function extracts data from an Ogg packet, the packet contains the Vorbis header.
 /// * There are 3 kinds of Vorbis headers, they are the identification header, the metadata header, and the setup header.

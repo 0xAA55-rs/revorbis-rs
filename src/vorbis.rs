@@ -1051,6 +1051,7 @@ pub struct VorbisFloor0 {
 
 impl VorbisFloor0 {
     pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<VorbisFloor, AudioReadError> {
+        let static_codebooks = &vorbis_info.static_codebooks;
         let mut ret = Self {
             order: bitreader.read(8)? as u8,
             rate: bitreader.read(16)? as u16,
@@ -1074,14 +1075,14 @@ impl VorbisFloor0 {
 
         for _ in 0..num_books {
             let book = bitreader.read(8)? as i8;
-            if book < 0 || book as usize >= vorbis_info.books.len() {
+            if book < 0 || book as usize >= static_codebooks.len() {
                 return Err(AudioReadError::InvalidData(format!("Invalid book number: {book}")));
             }
             let book = book as usize;
-            if vorbis_info.books[book].maptype == 0 {
+            if static_codebooks[book].maptype == 0 {
                 return Err(AudioReadError::InvalidData("Invalid book maptype: 0".to_string()));
             }
-            if vorbis_info.books[book].dim < 1 {
+            if static_codebooks[book].dim < 1 {
                 return Err(AudioReadError::InvalidData("Invalid book dimension: 0".to_string()));
             }
             ret.books.push(book as u8);
@@ -1137,6 +1138,7 @@ pub struct VorbisFloor1 {
 
 impl VorbisFloor1 {
     pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<VorbisFloor, AudioReadError> {
+        let static_codebooks = &vorbis_info.static_codebooks;
         let mut ret = Self::default();
         let mut maxclass = 0;
 
@@ -1152,15 +1154,15 @@ impl VorbisFloor1 {
             ret.class_subs[i] = bitreader.read(2)? as u8;
             if ret.class_subs[i] != 0 {
                 let class_book = bitreader.read(8)? as u8;
-                if class_book as usize >= vorbis_info.books.len() {
-                    return Err(AudioReadError::InvalidData(format!("Invalid class book index {class_book}, max books is {}", vorbis_info.books.len())));
+                if class_book as usize >= static_codebooks.len() {
+                    return Err(AudioReadError::InvalidData(format!("Invalid class book index {class_book}, max books is {}", static_codebooks.len())));
                 }
                 ret.class_book[i] = class_book;
             }
             for k in 0..(1 << ret.class_subs[i]) {
                 let subbook_index = bitreader.read(8)?.wrapping_sub(1);
-                if subbook_index < -1 || subbook_index as usize >= vorbis_info.books.len() {
-                    return Err(AudioReadError::InvalidData(format!("Invalid class subbook index {subbook_index}, max books is {}", vorbis_info.books.len())));
+                if subbook_index < -1 || subbook_index as usize >= static_codebooks.len() {
+                    return Err(AudioReadError::InvalidData(format!("Invalid class subbook index {subbook_index}, max books is {}", static_codebooks.len())));
                 }
                 ret.class_subbook[i][k] = subbook_index as u8;
             }
@@ -1288,6 +1290,7 @@ pub struct VorbisResidue {
 
 impl VorbisResidue {
     pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<Self, AudioReadError> {
+        let static_codebooks = &vorbis_info.static_codebooks;
         let residue_type = bitreader.read(16)? as u16;
 
         if !(0..3).contains(&residue_type) {
@@ -1304,7 +1307,7 @@ impl VorbisResidue {
             ..Default::default()
         };
 
-        if !(0..vorbis_info.books.len()).contains(&(ret.groupbook as usize)) {
+        if !(0..static_codebooks.len()).contains(&(ret.groupbook as usize)) {
             return Err(AudioReadError::InvalidData(format!("Invalid groupbook index {}", ret.groupbook)));
         }
 
@@ -1321,17 +1324,17 @@ impl VorbisResidue {
 
         for i in 0..acc {
             let book = bitreader.read(8)? as i8;
-            if !(0..vorbis_info.books.len()).contains(&(book as usize)) {
+            if !(0..static_codebooks.len()).contains(&(book as usize)) {
                 return Err(AudioReadError::InvalidData(format!("Invalid book index {book}")));
             }
             ret.booklist[i] = book as u8;
-            let book_maptype = vorbis_info.books[book as usize].maptype;
+            let book_maptype = static_codebooks[book as usize].maptype;
             if book_maptype == 0 {
                 return Err(AudioReadError::InvalidData(format!("Invalid book maptype {book_maptype}")));
             }
         }
 
-        let groupbook = &vorbis_info.books[ret.groupbook as usize];
+        let groupbook = &static_codebooks[ret.groupbook as usize];
         let entries = groupbook.entries;
         let mut dim = groupbook.dim;
         let mut partvals = 1u32;
@@ -1561,7 +1564,7 @@ impl Default for VorbisMapping {
 /// * The `VorbisSetupHeader` is the Vorbis setup header, the second header
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct VorbisSetupHeader {
-    pub books: CodeBooks,
+    pub static_codebooks: CodeBooks,
     pub floors: CopiableBuffer<VorbisFloor, 64>,
     pub residues: CopiableBuffer<VorbisResidue, 64>,
     pub maps: CopiableBuffer<VorbisMapping, 64>,
@@ -1577,7 +1580,7 @@ impl VorbisSetupHeader {
         } else {
             let mut ret = Self {
                 // codebooks
-                books: CodeBooks::load(bitreader)?,
+                static_codebooks: CodeBooks::load(bitreader)?,
                 ..Default::default()
             };
 

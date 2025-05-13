@@ -590,7 +590,7 @@ impl CodeBook {
     }
 
     /// * Pack the book into the bitstream
-    pub fn write<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<(), AudioWriteError>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<(), AudioWriteError>
     where
         W: Write {
         /* first the basic parameters */

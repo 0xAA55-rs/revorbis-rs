@@ -804,7 +804,7 @@ impl VorbisCommentHeader {
 /// * This function extracts data from an Ogg packet, the packet contains the Vorbis header.
 /// * There are 3 kinds of Vorbis headers, they are the identification header, the metadata header, and the setup header.
 #[allow(clippy::type_complexity)]
-pub fn get_vorbis_headers_from_ogg_packet_bytes(data: &[u8]) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>, u32), AudioError> {
+pub fn get_vorbis_headers_from_ogg_packet_bytes(data: &[u8], stream_id: &mut u32) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), AudioError> {
     use crate::ogg::OggPacket;
     let mut cursor = CursorVecU8::new(data.to_vec());
     let ogg_packets = OggPacket::from_cursor(&mut cursor);
@@ -832,7 +832,8 @@ pub fn get_vorbis_headers_from_ogg_packet_bytes(data: &[u8]) -> Result<(Vec<u8>,
         }
     }
 
-    Ok((ident_header, metadata_header, setup_header, ogg_packets[0].stream_id))
+    *stream_id = ogg_packets[0].stream_id;
+    Ok((ident_header, metadata_header, setup_header))
 }
 
 /// * This function removes the codebooks from the Vorbis setup header. The setup header was extracted from the Ogg stream.
@@ -870,7 +871,8 @@ pub fn remove_codebook_from_setup_header(setup_header: &[u8]) -> Result<Vec<u8>,
 /// * Thanks, the source code from 2001, and the author from Japan.
 pub fn _remove_codebook_from_ogg_stream(data: &[u8]) -> Result<Vec<u8>, AudioError> {
     use crate::ogg::{OggPacket, OggPacketType};
-    let (identification_header, comment_header, setup_header, stream_id) = get_vorbis_headers_from_ogg_packet_bytes(data)?;
+    let mut stream_id = 0u32;
+    let (identification_header, comment_header, setup_header) = get_vorbis_headers_from_ogg_packet_bytes(data, &mut stream_id)?;
 
     // Our target is to kill the codebooks from the `setup_header`
     // If this packet doesn't have any `setup_header`

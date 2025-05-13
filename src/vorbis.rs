@@ -891,8 +891,8 @@ impl VorbisIdentificationHeader {
 /// * The `VorbisCommentHeader` is the Vorbis comment header, the second header
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct VorbisCommentHeader {
-    comments: Vec<String>,
-    vendor: String,
+    pub comments: Vec<String>,
+    pub vendor: String,
 }
 
 impl VorbisCommentHeader {

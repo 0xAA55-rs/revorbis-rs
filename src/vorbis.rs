@@ -310,17 +310,34 @@ impl BitWriter<CursorVecU8> {
 /// * The specialized `BitWriter` that uses `Box<dyn Writer>` as its sink.
 pub type BitWriterObj = BitWriter<Box<dyn Writer>>;
 
+/// * Read bits of data using the environment `bitreader` variable, an instance of `BitReader`
+macro_rules! read_bits {
+    ($bitreader:ident, $bits:expr, $type:ty) => {
+        ($bitreader.read($bits)? as $type)
+    };
+    ($bitreader:ident, $bits:expr) => {
+        $bitreader.read($bits)?
+    };
+}
+
+/// * Write bits of data using the environment `bitwriter` variable, an instance of `BitWriter<W>`
+macro_rules! write_bits {
+    ($bitwriter:ident, $data:expr, $bits:expr) => {
+        $bitwriter.write($data as u32, $bits)?
+    };
+}
+
 /// * Read a byte array `slice` using the `BitReader`
 macro_rules! read_slice {
     ($bitreader:ident, $length:expr) => {
         {
             let mut ret = Vec::<u8>::with_capacity($length);
             for _ in 0..$length {
-                ret.push($bitreader.read(8)? as u8);
+                ret.push(read_bits!($bitreader, 8, u8));
             }
             ret
         }
-    }
+    };
 }
 
 /// * Read a sized string using the `BitReader`
@@ -333,7 +350,7 @@ macro_rules! read_string {
                 Err(_) => Err(AudioError::InvalidData(format!("Parse UTF-8 failed: {}", String::from_utf8_lossy(&s)))),
             }
         }
-    }
+    };
 }
 
 /// * Write a slice to the `BitWriter`
@@ -342,14 +359,14 @@ macro_rules! write_slice {
         for &data in $data.iter() {
             $bitwriter.write(data as u32, mem::size_of_val(&data) as u32 * 8)?;
         }
-    }
+    };
 }
 
 /// * Write a sized string to the `BitWriter`
 macro_rules! write_string {
     ($bitwriter:ident, $string:expr) => {
         write_slice!($bitwriter, $string.as_bytes());
-    }
+    };
 }
 
 /// * This is the parsed Vorbis codebook, it's used to quantify the audio samples.
@@ -397,24 +414,24 @@ impl CodeBook {
 
     fn parse_book(&mut self, bitreader: &mut BitReader) -> Result<(), AudioReadError> {
         /* make sure alignment is correct */
-        if bitreader.read(24)? != 0x564342 {
+        if read_bits!(bitreader, 24) != 0x564342 {
             return Err(AudioReadError::FormatError("Check the `BCV` flag failed.".to_string()));
         }
         /* first the basic parameters */
-        let dim = bitreader.read(16)?;
-        let entries = bitreader.read(24)?;
+        let dim = read_bits!(bitreader, 16);
+        let entries = read_bits!(bitreader, 24);
         if ilog!(dim) + ilog!(entries) > 24 {
             return Err(AudioReadError::FormatError(format!("{} + {} > 24", ilog!(dim), ilog!(entries))));
         }
         self.dim = dim as u16;
         self.entries = entries as u32;
         /* codeword ordering.... length ordered or unordered? */
-        match bitreader.read(1)? {
+        match read_bits!(bitreader, 1) {
             0 => {
                 debugln!("  unordered");
 
                 /* allocated but unused entries? */
-                let unused = bitreader.read(1)? != 0;
+                let unused = read_bits!(bitreader, 1) != 0;
 
                 /* unordered */
                 self.lengthlist.resize(self.entries as usize, 0);
@@ -424,28 +441,28 @@ impl CodeBook {
                     debugln!("  with unused entries");
 
                     for i in 0..self.entries as usize {
-                        if bitreader.read(1)? != 0 {
-                            let num = bitreader.read(5)? as i8;
-                            self.lengthlist[i] = num + 1;
+                        if read_bits!(bitreader, 1) != 0 {
+                            let num = read_bits!(bitreader, 5, i8).wrapping_add(1);
+                            self.lengthlist[i] = num;
                         } else {
                             self.lengthlist[i] = 0;
                         }
                     }
                 } else { /* all entries used; no tagging */
                     for i in 0..self.entries as usize {
-                        let num = bitreader.read(5)? as i8;
-                        self.lengthlist[i] = num + 1;
+                        let num = read_bits!(bitreader, 5, i8).wrapping_add(1);
+                        self.lengthlist[i] = num;
                     }
                 }
             }
             1 => { /* ordered */
                 debugln!("  ordered");
 
-                let mut length = (bitreader.read(5)? + 1) as i8;
+                let mut length = read_bits!(bitreader, 5, i8).wrapping_add(1);
                 self.lengthlist.resize(self.entries as usize, 0);
                 let mut i = 0;
                 while i < self.entries {
-                    let num = bitreader.read(ilog!(self.entries - i))? as u32;
+                    let num = read_bits!(bitreader, ilog!(self.entries - i), u32);
                     if length > 32 || num > self.entries - i || (num > 0 && (num - 1) >> (length - 1) > 1) {
                         return Err(AudioReadError::FormatError(format!("length({length}) > 32 || num({num}) > entries({}) - i({i}) || (num({num}) > 0 && (num({num}) - 1) >> (length({length}) - 1) > 1)", self.entries)));
                     }
@@ -462,17 +479,17 @@ impl CodeBook {
         debugln!("  lengthlist: [{}]", format_array!(&self.lengthlist, ", ", "{:02}"));
 
         /* Do we have a mapping to unpack? */
-        self.maptype = bitreader.read(4)? as u32;
+        self.maptype = read_bits!(bitreader, 4, u32);
         debugln!("  maptype: {}", self.maptype);
         match self.maptype {
             0 => (),
             1 | 2 => {
                 /* implicitly populated value mapping */
                 /* explicitly populated value mapping */
-                self.q_min = bitreader.read(32)? as isize;
-                self.q_delta = bitreader.read(32)? as isize;
-                self.q_quant = (bitreader.read(4)?.wrapping_add(1)) as u32;
-                self.q_sequencep = bitreader.read(1)?;
+                self.q_min = read_bits!(bitreader, 32, isize);
+                self.q_delta = read_bits!(bitreader, 32, isize);
+                self.q_quant = read_bits!(bitreader, 4, u32).wrapping_add(1);
+                self.q_sequencep = read_bits!(bitreader, 1);
 
                 debugln!("    q_min: {}", self.q_min);
                 debugln!("    q_delta: {}", self.q_delta);
@@ -490,7 +507,7 @@ impl CodeBook {
                 /* quantized values */
                 self.quantlist.resize(quantvals, 0);
                 for i in 0..quantvals {
-                    self.quantlist[i] = bitreader.read(self.q_quant)? as i16;
+                    self.quantlist[i] = read_bits!(bitreader, self.q_quant, i16);
                 }
 
                 debugln!("    quantlist: [{}]", format_array!(&self.quantlist, ", ", "0x{:04}"));
@@ -547,9 +564,9 @@ impl CodeBook {
     where
         W: Write {
         /* first the basic parameters */
-        bitwriter.write(0x564342, 24)?;
-        bitwriter.write(self.dim as u32, 16)?;
-        bitwriter.write(self.entries, 24)?;
+        write_bits!(bitwriter, 0x564342, 24);
+        write_bits!(bitwriter, self.dim, 16);
+        write_bits!(bitwriter, self.entries, 24);
 
         /* pack the codewords.  There are two packings; length ordered and
            length random.  Decide between the two now. */
@@ -571,24 +588,24 @@ impl CodeBook {
                each length.  The actual codewords are generated
                deterministically */
             let mut count = 0u32;
-            bitwriter.write(1, 1)?; /* ordered */
-            bitwriter.write(self.lengthlist[0] as u32 - 1, 5)?;
+            write_bits!(bitwriter, 1, 1); /* ordered */
+            write_bits!(bitwriter, self.lengthlist[0].wrapping_sub(1), 5);
 
             for i in 1..self.entries as usize {
                 let this = self.lengthlist[i];
                 let last = self.lengthlist[i - 1];
                 if this > last {
                     for _ in last..this {
-                        bitwriter.write(i as u32 - count, ilog!(self.entries - count))?;
+                        write_bits!(bitwriter, i as u32 - count, ilog!(self.entries - count));
                         count = i as u32;
                     }
                 }
             }
-            bitwriter.write(self.entries - count, ilog!(self.entries - count))?;
+            write_bits!(bitwriter, self.entries - count, ilog!(self.entries - count));
         } else {
             /* length random.  Again, we don't code the codeword itself, just
                the length.  This time, though, we have to encode each length */
-            bitwriter.write(0, 1)?; /* unordered */
+            write_bits!(bitwriter, 0, 1); /* unordered */
 
             /* algortihmic mapping has use for 'unused entries', which we tag
                here.  The algorithmic mapping happens as usual, but the unused
@@ -602,18 +619,18 @@ impl CodeBook {
             }
 
             if i == self.entries {
-                bitwriter.write(0, 1)?; /* no unused entries */
+                write_bits!(bitwriter, 0, 1); /* no unused entries */
                 for i in 0..self.entries as usize {
-                    bitwriter.write(self.lengthlist[i] as u32 - 1, 5)?;
+                    write_bits!(bitwriter, self.lengthlist[i].wrapping_sub(1), 5);
                 }
             } else {
-                bitwriter.write(1, 1)?; /* we have unused entries; thus we tag */
+                write_bits!(bitwriter, 1, 1); /* we have unused entries; thus we tag */
                 for i in 0..self.entries as usize {
                     if self.lengthlist[i] == 0 {
-                        bitwriter.write(0, 1)?;
+                        write_bits!(bitwriter, 0, 1);
                     } else {
-                        bitwriter.write(1, 1)?;
-                        bitwriter.write(self.lengthlist[i] as u32 - 1, 5)?;
+                        write_bits!(bitwriter, 1, 1);
+                        write_bits!(bitwriter, self.lengthlist[i].wrapping_sub(1), 5);
                     }
                 }
             }
@@ -621,7 +638,7 @@ impl CodeBook {
 
         /* is the entry number the desired return value, or do we have a
            mapping? If we have a mapping, what type? */
-        bitwriter.write(self.maptype, 4)?;
+        write_bits!(bitwriter, self.maptype, 4);
         match self.maptype {
             0 => (),
             1 | 2 => {
@@ -629,10 +646,10 @@ impl CodeBook {
                     return Err(AudioWriteError::MissingData("Missing quantlist data".to_string()));
                 }
 
-                bitwriter.write(self.q_min as u32, 32)?;
-                bitwriter.write(self.q_delta as u32, 32)?;
-                bitwriter.write(self.q_quant.wrapping_sub(1), 4)?;
-                bitwriter.write(self.q_sequencep as u32, 1)?;
+                write_bits!(bitwriter, self.q_min, 32);
+                write_bits!(bitwriter, self.q_delta, 32);
+                write_bits!(bitwriter, self.q_quant.wrapping_sub(1), 4);
+                write_bits!(bitwriter, self.q_sequencep, 1);
 
                 let quantvals = match self.maptype {
                     1 => self.book_maptype1_quantvals() as usize,
@@ -641,7 +658,7 @@ impl CodeBook {
                 };
 
                 for i in 0..quantvals {
-                    bitwriter.write(self.quantlist[i].unsigned_abs() as u32, self.q_quant)?;
+                    write_bits!(bitwriter, self.quantlist[i].unsigned_abs(), self.q_quant);
                 }
             }
             o => return Err(AudioWriteError::InvalidData(format!("Unexpected maptype {o}"))),

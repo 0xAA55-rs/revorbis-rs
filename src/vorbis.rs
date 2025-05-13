@@ -647,6 +647,38 @@ impl Debug for CodeBooks {
     }
 }
 
+macro_rules! read_slice {
+    ($data:ident, $length:expr) => {
+        {
+            let ret = &$data[..$length];
+            $data = &$data[$length..];
+            ret
+        }
+    }
+}
+
+macro_rules! read_slice_4 {
+    ($data:ident) => {
+        {
+            let ret = &$data[..4];
+            $data = &$data[4..];
+            [ret[0], ret[1], ret[2], ret[3]]
+        }
+    }
+}
+
+macro_rules! read_string {
+    ($data:ident, $length:expr) => {
+        {
+            let s = read_slice!($data, $length);
+            match std::str::from_utf8(s) {
+                Ok(s) => Ok(s.to_string()),
+                Err(_) => Err(AudioError::InvalidData(format!("Parse UTF-8 failed: {}", String::from_utf8_lossy(s)))),
+            }
+        }
+    }
+}
+
 /// * The `VorbisIdentificationHeader` is the Vorbis identification header, the first header
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct VorbisIdentificationHeader {

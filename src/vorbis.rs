@@ -760,6 +760,16 @@ impl CodeBooks {
         BitwiseData::calc_total_bytes(self.total_bits)
     }
 
+    /// * Get how many books
+    pub fn len(&self) -> usize {
+        self.books.len()
+    }
+
+    /// * Get is empty
+    pub fn is_empty(&self) -> bool {
+        self.books.is_empty()
+    }
+
     /// * Pack the codebook to binary for storage.
     pub fn pack(&self) -> Result<CodeBooksPacked, AudioWriteError> {
         let mut bitwriter = BitWriter::new();
@@ -798,6 +808,7 @@ impl Debug for CodeBooks {
     }
 }
 
+derive_index!(CodeBooks, CodeBook, books);
 
 /// * The `VorbisIdentificationHeader` is the Vorbis identification header, the first header
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -931,6 +942,7 @@ impl VorbisCommentHeader {
     }
 }
 
+derive_index!(VorbisCommentHeader, String, comments);
     }
 }
 

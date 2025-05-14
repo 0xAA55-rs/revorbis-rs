@@ -604,11 +604,15 @@ impl CodeBook {
             }
         }
     }
+}
 
+impl VorbisPackableObject for CodeBook {
     /// * Pack the book into the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<(), AudioWriteError>
+    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
     where
         W: Write {
+        let begin_bits = bitwriter.total_bits;
+
         /* first the basic parameters */
         write_bits!(bitwriter, 0x564342, 24);
         write_bits!(bitwriter, self.dim, 16);
@@ -710,7 +714,7 @@ impl CodeBook {
             o => return Err(AudioWriteError::InvalidData(format!("Unexpected maptype {o}"))),
         }
 
-        Ok(())
+        Ok(bitwriter.total_bits - begin_bits)
     }
 }
 
@@ -842,18 +846,6 @@ impl CodeBooks {
         self.books.is_empty()
     }
 
-    /// * Pack to bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
-    where
-        W: Write {
-        let begin_bits = bitwriter.total_bits;
-        write_bits!(bitwriter, self.books.len().wrapping_sub(1), 8);
-        for book in self.books.iter() {
-            book.pack(bitwriter)?;
-        }
-        Ok(bitwriter.total_bits - begin_bits)
-    }
-
     /// * Pack the codebook to binary for storage.
     pub fn to_packed_codebooks(&self) -> Result<CodeBooksPacked, AudioWriteError> {
         let mut bitwriter = BitWriter::new(CursorVecU8::default());
@@ -870,6 +862,20 @@ impl CodeBooks {
             books: BitwiseData::new(&books, total_bits),
             bits_of_books,
         })
+    }
+}
+
+impl VorbisPackableObject for CodeBooks {
+    /// * Pack to bitstream
+    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    where
+        W: Write {
+        let begin_bits = bitwriter.total_bits;
+        write_bits!(bitwriter, self.books.len().wrapping_sub(1), 8);
+        for book in self.books.iter() {
+            book.pack(bitwriter)?;
+        }
+        Ok(bitwriter.total_bits - begin_bits)
     }
 }
 
@@ -951,9 +957,11 @@ impl VorbisIdentificationHeader {
         let mut bitreader = BitReader::new(data);
         Self::load(&mut bitreader)
     }
+}
 
+impl VorbisPackableObject for VorbisIdentificationHeader {
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
     where
         W: Write {
         let bs_1: u8 = ilog!(self.block_size[0] - 1);
@@ -1009,9 +1017,11 @@ impl VorbisCommentHeader {
             })
         }
     }
+}
 
+impl VorbisPackableObject for VorbisCommentHeader {
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;
@@ -1052,8 +1062,10 @@ impl VorbisFloor {
             Self::Floor1(_) => 1,
         }
     }
+}
 
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+impl VorbisPackableObject for VorbisFloor {
+    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
     where
         W: Write {
         match self {
@@ -1255,9 +1267,11 @@ impl VorbisFloor1 {
 
         Ok(VorbisFloor::Floor1(ret))
     }
+}
 
+impl VorbisPackableObject for VorbisFloor1 {
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;
@@ -1434,9 +1448,11 @@ impl VorbisResidue {
         ret.partvals = partvals;
         Ok(ret)
     }
+}
 
+impl VorbisPackableObject for VorbisResidue {
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;
@@ -1610,9 +1626,11 @@ impl VorbisMapping {
         }
         Ok(ret)
     }
+}
 
+impl VorbisPackableObject for VorbisMapping {
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;
@@ -1713,9 +1731,11 @@ impl VorbisMode {
             Ok(ret)
         }
     }
+}
 
+impl VorbisPackableObject for VorbisMode {
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;
@@ -1805,9 +1825,11 @@ impl VorbisSetupHeader {
             Ok(ret)
         }
     }
+}
 
+impl VorbisPackableObject for VorbisSetupHeader {
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
+    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;

@@ -1276,7 +1276,7 @@ impl VorbisPackableObject for VorbisFloor1 {
         let mut maxclass = -1i32;
         write_bits!(bitwriter, 1, 16);
         write_bits!(bitwriter, self.partitions, 5);
-        for i in 0..self.partitions as usize {
+        for i in 0..self.partitions_class.len() {
             let partitions_class = self.partitions_class[i];
             maxclass = max(maxclass, partitions_class);
             write_bits!(bitwriter, partitions_class, 4);

@@ -962,6 +962,7 @@ impl VorbisPackableObject for VorbisIdentificationHeader {
         let bs_2: u8 = ilog!(self.block_size[1] - 1);
         let begin_bits = bitwriter.total_bits;
         write_slice!(bitwriter, b"\x01vorbis");
+        write_bits!(bitwriter, self.version, 32);
         write_bits!(bitwriter, self.channels, 8);
         write_bits!(bitwriter, self.sample_rate, 32);
         write_bits!(bitwriter, self.bitrate_upper, 32);

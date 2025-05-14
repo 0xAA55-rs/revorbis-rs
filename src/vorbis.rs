@@ -2269,15 +2269,8 @@ fn test_parse_vorbis_headers() {
     ogg_stream_writer.flush().unwrap();
     let new_bytes = &data.get_vec();
 
-    dbg!(vorbis_identification_header);
-    dbg!(vorbis_comment_header);
-    dbg!(vorbis_setup_header);
-
     let (vorbis_identification_header_2, vorbis_comment_header_2, vorbis_setup_header_2) = parse_vorbis_headers(new_bytes, &mut stream_id).unwrap();
 
-    dbg!(vorbis_identification_header_2);
-    dbg!(vorbis_comment_header_2);
-    dbg!(vorbis_setup_header_2);
 
     assert_eq!(test_header, new_bytes);
 }

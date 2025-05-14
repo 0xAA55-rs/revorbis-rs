@@ -26,6 +26,7 @@ const MASK: [u32; 33] = [
 const SHOW_DEBUG: bool = true;
 const DEBUG_ON_READ_BITS: bool = true;
 const DEBUG_ON_WRITE_BITS: bool = false;
+const PANIC_ON_ERROR: bool = true;
 macro_rules! debugln {
     () => {
         if SHOW_DEBUG {
@@ -37,6 +38,16 @@ macro_rules! debugln {
             println!($($arg)*);
         }
     };
+}
+
+macro_rules! return_Err {
+    ($error:expr) => {
+        if PANIC_ON_ERROR {
+            panic!("{:?}", $error)
+        } else {
+            return Err($error)
+        }
+    }
 }
 
 macro_rules! derive_index {
@@ -185,7 +196,7 @@ impl<'a> BitReader<'a> {
     /// * bits <= 32
     pub fn read(&mut self, mut bits: i32) -> Result<i32, AudioReadError> {
         if !(0..=32).contains(&bits) {
-            return Err(AudioReadError::InvalidArguments(format!("Invalid bit number: {bits}")));
+            return_Err!(AudioReadError::InvalidArguments(format!("Invalid bit number: {bits}")));
         }
         let mut ret: i32;
         let m = MASK[bits as usize];
@@ -282,7 +293,7 @@ where
     /// * Write data in bits, max is 32 bit.
     pub fn write(&mut self, mut value: u32, mut bits: i32) -> Result<(), AudioWriteError> {
         if !(0..=32).contains(&bits) {
-            return Err(AudioWriteError::InvalidArguments(format!("Invalid bits {bits}")));
+            return_Err!(AudioWriteError::InvalidArguments(format!("Invalid bits {bits}")));
         }
         value &= MASK[bits as usize];
         let origbits = bits;
@@ -473,14 +484,14 @@ impl CodeBook {
     fn parse_book(&mut self, bitreader: &mut BitReader) -> Result<(), AudioReadError> {
         /* make sure alignment is correct */
         if read_bits!(bitreader, 24) != 0x564342 {
-            return Err(AudioReadError::FormatError("Check the `BCV` flag failed.".to_string()));
+            return_Err!(AudioReadError::FormatError("Check the `BCV` flag failed.".to_string()));
         }
 
         /* first the basic parameters */
         self.dim = read_bits!(bitreader, 16);
         self.entries = read_bits!(bitreader, 24);
         if ilog!(self.dim) + ilog!(self.entries) > 24 {
-            return Err(AudioReadError::FormatError(format!("{} + {} > 24", ilog!(self.dim), ilog!(self.entries))));
+            return_Err!(AudioReadError::FormatError(format!("{} + {} > 24", ilog!(self.dim), ilog!(self.entries))));
         }
 
         /* codeword ordering.... length ordered or unordered? */
@@ -517,7 +528,7 @@ impl CodeBook {
                 while i < self.entries {
                     let num = read_bits!(bitreader, ilog!(self.entries - i));
                     if length > 32 || num > self.entries - i || (num > 0 && (num - 1) >> (length - 1) > 1) {
-                        return Err(AudioReadError::FormatError(format!("length({length}) > 32 || num({num}) > entries({}) - i({i}) || (num({num}) > 0 && (num({num}) - 1) >> (length({length}) - 1) > 1)", self.entries)));
+                        return_Err!(AudioReadError::FormatError(format!("length({length}) > 32 || num({num}) > entries({}) - i({i}) || (num({num}) > 0 && (num({num}) - 1) >> (length({length}) - 1) > 1)", self.entries)));
                     }
                     for _ in 0..num {
                         self.lengthlist[i as usize] = length;
@@ -526,7 +537,7 @@ impl CodeBook {
                     length += 1;
                 }
             }
-            o => return Err(AudioReadError::FormatError(format!("Unexpected codeword ordering {o}"))),
+            o => return_Err!(AudioReadError::FormatError(format!("Unexpected codeword ordering {o}"))),
         }
 
         /* Do we have a mapping to unpack? */
@@ -553,7 +564,7 @@ impl CodeBook {
                     self.quantlist[i] = read_bits!(bitreader, self.q_quant);
                 }
             }
-            o => return Err(AudioReadError::FormatError(format!("Unexpected maptype {o}"))),
+            o => return_Err!(AudioReadError::FormatError(format!("Unexpected maptype {o}"))),
         }
         Ok(())
     }
@@ -688,7 +699,7 @@ impl VorbisPackableObject for CodeBook {
             0 => (),
             1 | 2 => {
                 if self.quantlist.is_empty() {
-                    return Err(AudioWriteError::MissingData("Missing quantlist data".to_string()));
+                    return_Err!(AudioWriteError::MissingData("Missing quantlist data".to_string()));
                 }
 
                 write_bits!(bitwriter, self.q_min, 32);
@@ -706,7 +717,7 @@ impl VorbisPackableObject for CodeBook {
                     write_bits!(bitwriter, self.quantlist[i].unsigned_abs(), self.q_quant);
                 }
             }
-            o => return Err(AudioWriteError::InvalidData(format!("Unexpected maptype {o}"))),
+            o => return_Err!(AudioWriteError::InvalidData(format!("Unexpected maptype {o}"))),
         }
 
         Ok(bitwriter.total_bits - begin_bits)
@@ -991,18 +1002,18 @@ impl VorbisCommentHeader {
         } else {
             let vendor_len = read_bits!(bitreader, 32);
             if vendor_len < 0 {
-                return Err(AudioReadError::InvalidData(format!("Bad vendor string length {vendor_len}")));
+                return_Err!(AudioReadError::InvalidData(format!("Bad vendor string length {vendor_len}")));
             }
             let vendor = read_string!(bitreader, vendor_len as usize)?;
             let num_comments = read_bits!(bitreader, 32);
             if num_comments < 0 {
-                return Err(AudioReadError::InvalidData(format!("Bad number of comments {num_comments}")));
+                return_Err!(AudioReadError::InvalidData(format!("Bad number of comments {num_comments}")));
             }
             let mut comments = Vec::<String>::with_capacity(num_comments as usize);
             for _ in 0..num_comments {
                 let comment_len = read_bits!(bitreader, 32);
                 if comment_len < 0 {
-                    return Err(AudioReadError::InvalidData(format!("Bad comment string length {vendor_len}")));
+                    return_Err!(AudioReadError::InvalidData(format!("Bad comment string length {vendor_len}")));
                 }
                 comments.push(read_string!(bitreader, comment_len as usize)?);
             }
@@ -1111,7 +1122,7 @@ impl VorbisFloor0 {
         || ret.rate < 1
         || ret.barkmap < 1
         || num_books < 1 {
-            return Err(AudioReadError::InvalidData(format!("Invalid floor 0 data: \norder = {}\nrate = {}\nbarkmap = {}\nnum_books = {num_books}",
+            return_Err!(AudioReadError::InvalidData(format!("Invalid floor 0 data: \norder = {}\nrate = {}\nbarkmap = {}\nnum_books = {num_books}",
                 ret.order,
                 ret.rate,
                 ret.barkmap
@@ -1121,13 +1132,13 @@ impl VorbisFloor0 {
         for _ in 0..num_books {
             let book = read_bits!(bitreader, 8);
             if book < 0 || book as usize >= static_codebooks.len() {
-                return Err(AudioReadError::InvalidData(format!("Invalid book number: {book}")));
+                return_Err!(AudioReadError::InvalidData(format!("Invalid book number: {book}")));
             }
             if static_codebooks[book as usize].maptype == 0 {
-                return Err(AudioReadError::InvalidData("Invalid book maptype: 0".to_string()));
+                return_Err!(AudioReadError::InvalidData("Invalid book maptype: 0".to_string()));
             }
             if static_codebooks[book as usize].dim < 1 {
-                return Err(AudioReadError::InvalidData("Invalid book dimension: 0".to_string()));
+                return_Err!(AudioReadError::InvalidData("Invalid book dimension: 0".to_string()));
             }
             ret.books.push(book);
         }
@@ -1221,14 +1232,14 @@ impl VorbisFloor1 {
                 ret.class_book[i] = read_bits!(bitreader, 8);
             }
             if ret.class_book[i] as usize >= static_codebooks.len() {
-                return Err(AudioReadError::InvalidData(format!("Invalid class book index {}, max books is {}", ret.class_book[i], static_codebooks.len())));
+                return_Err!(AudioReadError::InvalidData(format!("Invalid class book index {}, max books is {}", ret.class_book[i], static_codebooks.len())));
             }
             let sublen = 1usize << ret.class_subs[i];
             ret.class_subbook[i].resize(sublen, 0);
             for k in 0..sublen {
                 let subbook_index = read_bits!(bitreader, 8).wrapping_sub(1);
                 if subbook_index < -1 || subbook_index >= static_codebooks.len() as i32 {
-                    return Err(AudioReadError::InvalidData(format!("Invalid class subbook index {subbook_index}, max books is {}", static_codebooks.len())));
+                    return_Err!(AudioReadError::InvalidData(format!("Invalid class subbook index {subbook_index}, max books is {}", static_codebooks.len())));
                 }
                 ret.class_subbook[i][k] = subbook_index;
             }
@@ -1242,13 +1253,13 @@ impl VorbisFloor1 {
         for i in 0..ret.partitions as usize {
             count += ret.class_dim[ret.partitions_class[i] as usize] as usize;
             if count > 63 {
-                return Err(AudioReadError::InvalidData(format!("Invalid class dim sum {count}, max is 63")));
+                return_Err!(AudioReadError::InvalidData(format!("Invalid class dim sum {count}, max is 63")));
             }
             ret.postlist.resize(count + 2, 0);
             while k < count {
                 let t = read_bits!(bitreader, rangebits);
                 if t < 0 || t >= (1 << rangebits) {
-                    return Err(AudioReadError::InvalidData(format!("Invalid value for postlist {t}")));
+                    return_Err!(AudioReadError::InvalidData(format!("Invalid value for postlist {t}")));
                 }
                 ret.postlist[k + 2] = t;
                 k += 1;
@@ -1259,7 +1270,7 @@ impl VorbisFloor1 {
         ret.postlist[..(count + 2)].sort();
         for i in 1..(count + 2) {
             if ret.postlist[i - 1] == ret.postlist[i] {
-                return Err(AudioReadError::InvalidData(format!("Bad postlist: [{}]", format_array!(ret.postlist, ", ", "{}"))));
+                return_Err!(AudioReadError::InvalidData(format!("Bad postlist: [{}]", format_array!(ret.postlist, ", ", "{}"))));
             }
         }
 
@@ -1385,7 +1396,7 @@ impl VorbisResidue {
         let residue_type = read_bits!(bitreader, 16);
 
         if !(0..3).contains(&residue_type) {
-            return Err(AudioReadError::InvalidData(format!("Invalid residue type {residue_type}")))
+            return_Err!(AudioReadError::InvalidData(format!("Invalid residue type {residue_type}")))
         }
 
         let mut ret = Self {
@@ -1399,7 +1410,7 @@ impl VorbisResidue {
         };
 
         if !(0..static_codebooks.len()).contains(&(ret.groupbook as usize)) {
-            return Err(AudioReadError::InvalidData(format!("Invalid groupbook index {}", ret.groupbook)));
+            return_Err!(AudioReadError::InvalidData(format!("Invalid groupbook index {}", ret.groupbook)));
         }
 
         let partitions = ret.partitions as usize;
@@ -1420,12 +1431,12 @@ impl VorbisResidue {
         for i in 0..acc {
             let book = read_bits!(bitreader, 8);
             if !(0..static_codebooks.len()).contains(&(book as usize)) {
-                return Err(AudioReadError::InvalidData(format!("Invalid book index {book}")));
+                return_Err!(AudioReadError::InvalidData(format!("Invalid book index {book}")));
             }
             ret.booklist[i] = book;
             let book_maptype = static_codebooks[book as usize].maptype;
             if book_maptype == 0 {
-                return Err(AudioReadError::InvalidData(format!("Invalid book maptype {book_maptype}")));
+                return_Err!(AudioReadError::InvalidData(format!("Invalid book maptype {book_maptype}")));
             }
         }
 
@@ -1434,12 +1445,12 @@ impl VorbisResidue {
         let mut dim = groupbook.dim;
         let mut partvals = 1i32;
         if dim < 1 {
-            return Err(AudioReadError::InvalidData(format!("Invalid groupbook dimension {dim}")));
+            return_Err!(AudioReadError::InvalidData(format!("Invalid groupbook dimension {dim}")));
         }
         while dim > 0 {
             partvals *= ret.partitions;
             if partvals > entries {
-                return Err(AudioReadError::InvalidData(format!("Invalid partvals {partvals}")));
+                return_Err!(AudioReadError::InvalidData(format!("Invalid partvals {partvals}")));
             }
             dim -= 1;
         }
@@ -1543,7 +1554,7 @@ impl VorbisMapping {
         let mapping_type = read_bits!(bitreader, 16);
 
         if mapping_type != 0 {
-            return Err(AudioReadError::InvalidData(format!("Invalid mapping type {mapping_type}")))
+            return_Err!(AudioReadError::InvalidData(format!("Invalid mapping type {mapping_type}")))
         }
 
         let channels = ident_header.channels as i32;
@@ -1552,7 +1563,7 @@ impl VorbisMapping {
         let submaps = if read_bits!(bitreader, 1) != 0 {
             let submaps = read_bits!(bitreader, 4).wrapping_add(1);
             if submaps == 0 {
-                return Err(AudioReadError::InvalidData("No submaps.".to_string()));
+                return_Err!(AudioReadError::InvalidData("No submaps.".to_string()));
             }
             submaps
         } else {
@@ -1561,7 +1572,7 @@ impl VorbisMapping {
         let coupling_steps = if read_bits!(bitreader, 1) != 0 {
             let coupling_steps = read_bits!(bitreader, 8).wrapping_add(1);
             if coupling_steps == 0 {
-                return Err(AudioReadError::InvalidData("No coupling steps.".to_string()));
+                return_Err!(AudioReadError::InvalidData("No coupling steps.".to_string()));
             }
             coupling_steps
         } else {
@@ -1588,13 +1599,13 @@ impl VorbisMapping {
             if test_m == test_a
             || test_m >= channels as i32
             || test_a >= channels as i32 {
-                return Err(AudioReadError::InvalidData(format!("Bad values for test_m = {test_m}, test_a = {test_a}, channels = {channels}")));
+                return_Err!(AudioReadError::InvalidData(format!("Bad values for test_m = {test_m}, test_a = {test_a}, channels = {channels}")));
             }
         }
 
         let reserved = read_bits!(bitreader, 2);
         if reserved != 0 {
-            return Err(AudioReadError::InvalidData(format!("Reserved value is {reserved}")));
+            return_Err!(AudioReadError::InvalidData(format!("Reserved value is {reserved}")));
         }
 
         if submaps > 1 {
@@ -1602,7 +1613,7 @@ impl VorbisMapping {
             for i in 0..channels {
                 let chmux = read_bits!(bitreader, 4);
                 if chmux >= submaps as i32 {
-                    return Err(AudioReadError::InvalidData(format!("Chmux {chmux} >= submaps {submaps}")));
+                    return_Err!(AudioReadError::InvalidData(format!("Chmux {chmux} >= submaps {submaps}")));
                 }
                 ret.chmuxlist[i] = chmux;
             }
@@ -1613,12 +1624,12 @@ impl VorbisMapping {
             let _unused_time_submap = read_bits!(bitreader, 8);
             let floorsubmap = read_bits!(bitreader, 8);
             if floorsubmap >= floors {
-                return Err(AudioReadError::InvalidData(format!("floorsubmap {floorsubmap} >= floors {floors}")));
+                return_Err!(AudioReadError::InvalidData(format!("floorsubmap {floorsubmap} >= floors {floors}")));
             }
             ret.floorsubmap[i] = floorsubmap;
             let residuesubmap = read_bits!(bitreader, 8);
             if residuesubmap >= residues {
-                return Err(AudioReadError::InvalidData(format!("floorsubmap {floorsubmap} >= floors {floors}")));
+                return_Err!(AudioReadError::InvalidData(format!("floorsubmap {floorsubmap} >= floors {floors}")));
             }
             ret.residuesubmap[i] = residuesubmap;
         }
@@ -1775,14 +1786,14 @@ impl VorbisSetupHeader {
             for _ in 0..times {
                 let time_type = read_bits!(bitreader, 16);
                 if time_type != 0 {
-                    return Err(AudioReadError::InvalidData(format!("Invalid time type {time_type}")));
+                    return_Err!(AudioReadError::InvalidData(format!("Invalid time type {time_type}")));
                 }
             }
 
             // floor backend settings
             let floors = read_bits!(bitreader, 6).wrapping_add(1);
             if floors == 0 {
-                return Err(AudioReadError::InvalidData("No floor backend settings.".to_string()));
+                return_Err!(AudioReadError::InvalidData("No floor backend settings.".to_string()));
             }
             for _ in 0..floors {
                 ret.floors.push(VorbisFloor::load(bitreader, &ret)?);
@@ -1791,7 +1802,7 @@ impl VorbisSetupHeader {
             // residue backend settings
             let residues = read_bits!(bitreader, 6).wrapping_add(1);
             if residues == 0 {
-                return Err(AudioReadError::InvalidData("No residues backend settings.".to_string()));
+                return_Err!(AudioReadError::InvalidData("No residues backend settings.".to_string()));
             }
             for _ in 0..residues {
                 ret.residues.push(VorbisResidue::load(bitreader, &ret)?);
@@ -1800,7 +1811,7 @@ impl VorbisSetupHeader {
             // map backend settings
             let maps = read_bits!(bitreader, 6).wrapping_add(1);
             if maps == 0 {
-                return Err(AudioReadError::InvalidData("No map backend settings.".to_string()));
+                return_Err!(AudioReadError::InvalidData("No map backend settings.".to_string()));
             }
             for _ in 0..maps {
                 ret.maps.push(VorbisMapping::load(bitreader, &ret, ident_header)?);
@@ -1809,7 +1820,7 @@ impl VorbisSetupHeader {
             // mode settings
             let modes = read_bits!(bitreader, 6).wrapping_add(1);
             if modes == 0 {
-                return Err(AudioReadError::InvalidData("No mode settings.".to_string()));
+                return_Err!(AudioReadError::InvalidData("No mode settings.".to_string()));
             }
             for _ in 0..modes {
                 ret.modes.push(VorbisMode::load(bitreader, &ret)?);
@@ -1817,7 +1828,7 @@ impl VorbisSetupHeader {
 
             let eop = read_bits!(bitreader, 1) != 0;
             if !eop {
-                return Err(AudioReadError::InvalidData("Missing End Of Packet bit.".to_string()));
+                return_Err!(AudioReadError::InvalidData("Missing End Of Packet bit.".to_string()));
             }
 
             Ok(ret)
@@ -1898,7 +1909,7 @@ pub fn get_vorbis_headers_from_ogg_packet_bytes(data: &[u8], stream_id: &mut u32
                 1 => ident_header.extend(segment),
                 3 => metadata_header.extend(segment),
                 5 => setup_header.extend(segment),
-                o => return Err(AudioError::Unparseable(format!("Invalid Vorbis header type {o}"))),
+                o => return_Err!(AudioError::Unparseable(format!("Invalid Vorbis header type {o}"))),
             }
         }
     }
@@ -1965,7 +1976,7 @@ pub fn _remove_codebook_from_ogg_stream(data: &[u8]) -> Result<Vec<u8>, AudioErr
     // If this packet doesn't have any `setup_header`
     // We return.
     if setup_header.is_empty() {
-        return Err(AudioError::NoSuchData("There's no setup header in the given Ogg packets.".to_string()));
+        return_Err!(AudioError::NoSuchData("There's no setup header in the given Ogg packets.".to_string()));
     }
 
     let setup_header = remove_codebook_from_setup_header(&setup_header)?;

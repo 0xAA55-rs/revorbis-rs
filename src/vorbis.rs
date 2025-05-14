@@ -406,6 +406,17 @@ macro_rules! write_string {
     };
 }
 
+/// * Any Vorbis objects that can pack into bitstreams should implement this `VorbisPackableObject`
+pub trait VorbisPackableObject {
+    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, AudioWriteError> where W: Write;
+
+    fn to_packed(&self) -> Result<BitwiseData, AudioWriteError> {
+        let mut bitwriter = BitWriterCursor::default();
+        let bits = self.pack(&mut bitwriter)?;
+        Ok(BitwiseData::new(&bitwriter.into_bytes(), bits))
+    }
+}
+
 /// * This is the parsed Vorbis codebook, it's used to quantify the audio samples.
 /// * This is the re-invented wheel. For this piece of code, this thing is only used to parse the binary form of the codebooks.
 /// * And then I can sum up how many **bits** were used to store the codebooks.

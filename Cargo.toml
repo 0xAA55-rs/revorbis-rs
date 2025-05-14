@@ -1,0 +1,19 @@
+[package]
+name = "revorbis-rs"
+version = "0.0.1"
+edition.workspace = true
+authors.workspace = true
+license-file.workspace = true
+repository.workspace = true
+description = "A try to rewrite libvorbis in Rust."
+keywords = ["vorbis", "audio"]
+
+[dependencies]
+ogg.workspace = true
+bitwise.workspace = true
+io_utils.workspace = true
+copiablebuf.workspace = true
+
+[lib]
+name = "revorbis"
+path = "src/vorbis.rs"

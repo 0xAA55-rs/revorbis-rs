@@ -976,8 +976,8 @@ impl VorbisPackableObject for VorbisIdentificationHeader {
         write_bits!(bitwriter, self.bitrate_upper, 32);
         write_bits!(bitwriter, self.bitrate_nominal, 32);
         write_bits!(bitwriter, self.bitrate_lower, 32);
-        write_bits!(bitwriter, bs_1.wrapping_sub(1), 4);
-        write_bits!(bitwriter, bs_2.wrapping_sub(1), 4);
+        write_bits!(bitwriter, bs_1, 4);
+        write_bits!(bitwriter, bs_2, 4);
         write_bits!(bitwriter, 1, 1);
         Ok(bitwriter.total_bits - begin_bits)
     }

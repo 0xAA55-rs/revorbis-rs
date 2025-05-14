@@ -254,7 +254,7 @@ where
             endbit: 0,
             total_bits: 0,
             writer,
-            cache: CursorVecU8::new(vec![0u8]),
+            cache: CursorVecU8::default(),
         }
     }
 

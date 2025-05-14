@@ -2271,6 +2271,9 @@ fn test_parse_vorbis_headers() {
 
     let (vorbis_identification_header_2, vorbis_comment_header_2, vorbis_setup_header_2) = parse_vorbis_headers(new_bytes, &mut stream_id).unwrap();
 
+    assert_eq!(&vorbis_identification_header, &vorbis_identification_header_2);
+    assert_eq!(&vorbis_comment_header, &vorbis_comment_header_2);
+    assert_eq!(&vorbis_setup_header, &vorbis_setup_header_2);
 
     assert_eq!(test_header, new_bytes);
 }

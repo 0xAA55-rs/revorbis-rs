@@ -9,7 +9,7 @@ description = "A try to rewrite libvorbis in Rust."
 keywords = ["vorbis", "audio"]
 
 [dependencies]
-ogg.workspace = true
+tinyogg.workspace = true
 io_utils.workspace = true
 copiablebuf.workspace = true
 

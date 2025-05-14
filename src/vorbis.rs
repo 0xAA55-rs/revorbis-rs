@@ -1629,7 +1629,7 @@ impl VorbisMapping {
             ret.floorsubmap[i] = floorsubmap;
             let residuesubmap = read_bits!(bitreader, 8);
             if residuesubmap >= residues {
-                return_Err!(AudioReadError::InvalidData(format!("floorsubmap {floorsubmap} >= floors {floors}")));
+                return_Err!(AudioReadError::InvalidData(format!("residuesubmap {residuesubmap} >= residues {residues}")));
             }
             ret.residuesubmap[i] = residuesubmap;
         }

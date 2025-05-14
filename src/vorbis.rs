@@ -6,9 +6,11 @@ use std::{
     mem,
     ops::{Index, IndexMut, Range, RangeFrom, RangeTo, RangeFull},
 };
+#[macro_use]
+mod bitwise;
 use ogg::{OggPacket, OggPacketType};
+use bitwise::BitwiseData;
 use io_utils::{Writer, CursorVecU8};
-use bitwise::{BitwiseData, format_array};
 use copiablebuf::CopiableBuffer;
 
 const MASK: [u32; 33] = [

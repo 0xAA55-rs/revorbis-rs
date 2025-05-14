@@ -914,7 +914,6 @@ pub struct VorbisIdentificationHeader {
     pub bitrate_nominal: i32,
     pub bitrate_lower: i32,
     pub block_size: [i32; 2],
-    pub framing_flag: bool,
 }
 
 impl VorbisIdentificationHeader {
@@ -933,13 +932,13 @@ impl VorbisIdentificationHeader {
             let bs_1 = read_bits!(bitreader, 4);
             let bs_2 = read_bits!(bitreader, 4);
             let block_size = [1 << bs_1, 1 << bs_2];
-            let framing_flag = read_bits!(bitreader, 1) & 1 == 1;
+            let end_of_packet = read_bits!(bitreader, 1) & 1 == 1;
             if sample_rate < 1
             || channels < 1
             || block_size[0] < 64
             || block_size[1] < block_size[0]
             || block_size[1] > 8192
-            || !framing_flag {
+            || !end_of_packet {
                 Err(AudioReadError::InvalidData("Bad Vorbis identification header.".to_string()))
             } else {
                 Ok(Self {
@@ -950,7 +949,6 @@ impl VorbisIdentificationHeader {
                     bitrate_nominal,
                     bitrate_lower,
                     block_size,
-                    framing_flag,
                 })
             }
         }

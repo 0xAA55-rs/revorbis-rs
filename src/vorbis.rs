@@ -1264,9 +1264,11 @@ impl VorbisFloor1 {
         }
         ret.postlist[0] = 0;
         ret.postlist[1] = maxrange;
-        ret.postlist[..(count + 2)].sort();
-        for i in 1..(count + 2) {
-            if ret.postlist[i - 1] == ret.postlist[i] {
+
+        let mut checker = ret.postlist[..].to_vec();
+        checker.sort();
+        for i in 1..checker.len() {
+            if checker[i - 1] == checker[i] {
                 return_Err!(AudioReadError::InvalidData(format!("Bad postlist: [{}]", format_array!(ret.postlist, ", ", "{}"))));
             }
         }

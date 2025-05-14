@@ -1005,10 +1005,10 @@ impl VorbisCommentHeader {
         W: Write {
         let begin_bits = bitwriter.total_bits;
         write_slice!(bitwriter, b"\x03vorbis");
-        bitwriter.write(self.vendor.len() as u32, 32)?;
+        write_bits!(bitwriter, self.vendor.len(), 32);
         write_string!(bitwriter, self.vendor);
         for comment in self.comments.iter() {
-            bitwriter.write(comment.len() as u32, 32)?;
+            write_bits!(bitwriter, comment.len(), 32);
             write_string!(bitwriter, comment);
         }
         Ok(bitwriter.total_bits - begin_bits)
@@ -1253,8 +1253,8 @@ impl VorbisFloor1 {
         let maxposit = self.postlist[1];
         let rangebits = ilog!(maxposit - 1);
         let mut maxclass = -1i32;
-        write_bits!(bitwriter, 1u32, 16);
-        write_bits!(bitwriter, self.partitions as u32, 5);
+        write_bits!(bitwriter, 1, 16);
+        write_bits!(bitwriter, self.partitions, 5);
         for i in 0..self.partitions as usize {
             let partitions_class = self.partitions_class[i];
             maxclass = max(maxclass, partitions_class);
@@ -1262,23 +1262,23 @@ impl VorbisFloor1 {
         }
         let maxclass = maxclass as usize + 1;
         for i in 0..maxclass {
-            write_bits!(bitwriter, self.class_dim[i].wrapping_sub(1) as u32, 3);
-            write_bits!(bitwriter, self.class_subs[i] as u32, 2);
+            write_bits!(bitwriter, self.class_dim[i].wrapping_sub(1), 3);
+            write_bits!(bitwriter, self.class_subs[i], 2);
             if self.class_subs[i] != 0 {
-                write_bits!(bitwriter, self.class_book[i] as u32, 8);
+                write_bits!(bitwriter, self.class_book[i], 8);
             }
             for k in 0..(1 << self.class_subs[i]) as usize {
-                write_bits!(bitwriter, self.class_subbook[i][k] as u32 + 1, 8);
+                write_bits!(bitwriter, self.class_subbook[i][k].wrapping_add(1), 8);
             }
         }
-        write_bits!(bitwriter, self.mult.wrapping_sub(1) as u32, 2);
+        write_bits!(bitwriter, self.mult.wrapping_sub(1), 2);
         write_bits!(bitwriter, rangebits, 4);
         let mut k = 0usize;
         let mut count = 0usize;
         for i in 0..self.partitions as usize {
             count += self.class_dim[self.partitions_class[i] as usize] as usize;
             while k < count {
-                write_bits!(bitwriter, self.postlist[k + 2] as u32, rangebits);
+                write_bits!(bitwriter, self.postlist[k + 2], rangebits);
                 k += 1;
             }
         }
@@ -1438,7 +1438,7 @@ impl VorbisResidue {
         write_bits!(bitwriter, self.partitions.wrapping_sub(1), 6);
         write_bits!(bitwriter, self.groupbook, 8);
         for i in 0..self.secondstages.len() {
-            let secondstage = self.secondstages[i] as u32;
+            let secondstage = self.secondstages[i];
             if ilog!(secondstage) > 3 {
                 write_bits!(bitwriter, secondstage, 3);
                 write_bits!(bitwriter, 1, 1);
@@ -1449,7 +1449,7 @@ impl VorbisResidue {
             acc += icount!(secondstage);
         }
         for i in 0..acc {
-            write_bits!(bitwriter, self.booklist[i] as u32, 8);
+            write_bits!(bitwriter, self.booklist[i], 8);
         }
 
         Ok(bitwriter.total_bits - begin_bits)

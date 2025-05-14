@@ -10,8 +10,8 @@ keywords = ["vorbis", "audio"]
 
 [dependencies]
 tinyogg.workspace = true
-io_utils.workspace = true
 copiablebuf.workspace = true
+shared_io_utils.workspace = true
 
 [lib]
 name = "revorbis"

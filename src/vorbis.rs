@@ -806,7 +806,8 @@ pub struct CodeBooks {
 impl CodeBooks {
     /// * Unpack the codebooks from the bitstream
     pub fn load(bitreader: &mut BitReader) -> Result<Self, AudioReadError> {
-        let num_books = (bitreader.read(8)? + 1) as usize;
+        let begin_bits = bitreader.total_bits;
+        let num_books = (read_bits!(bitreader, 8).wrapping_add(1)) as usize;
         let mut books = Vec::<CodeBook>::with_capacity(num_books);
         let mut bits_of_books = Vec::<usize>::with_capacity(num_books);
         for _ in 0..num_books {
@@ -817,7 +818,7 @@ impl CodeBooks {
         Ok(Self {
             books,
             bits_of_books,
-            total_bits: bitreader.total_bits,
+            total_bits: bitreader.total_bits - begin_bits,
         })
     }
 

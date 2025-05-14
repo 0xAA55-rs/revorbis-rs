@@ -7,7 +7,7 @@ use std::{
     ops::{Index, IndexMut, Range, RangeFrom, RangeTo, RangeFull},
 };
 #[macro_use]
-mod bitwise;
+pub mod bitwise;
 use ogg::{OggPacket, OggPacketType};
 use bitwise::BitwiseData;
 use io_utils::{Writer, CursorVecU8};

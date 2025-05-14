@@ -1247,7 +1247,7 @@ impl VorbisFloor1 {
 
         let mut k = 0usize;
         let mut count = 0usize;
-        for i in 0..ret.partitions as usize {
+        for i in 0..ret.partitions_class.len() {
             count += ret.class_dim[ret.partitions_class[i] as usize] as usize;
             if count > 63 {
                 return_Err!(AudioReadError::InvalidData(format!("Invalid class dim sum {count}, max is 63")));
@@ -1306,7 +1306,7 @@ impl VorbisPackableObject for VorbisFloor1 {
         write_bits!(bitwriter, rangebits, 4);
         let mut k = 0usize;
         let mut count = 0usize;
-        for i in 0..self.partitions as usize {
+        for i in 0..self.partitions_class.len() {
             count += self.class_dim[self.partitions_class[i] as usize] as usize;
             while k < count {
                 write_bits!(bitwriter, self.postlist[k + 2], rangebits);

@@ -1209,16 +1209,13 @@ impl VorbisFloor1 {
     pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<VorbisFloor, AudioReadError> {
         let static_codebooks = &vorbis_info.static_codebooks;
         let mut ret = Self::default();
-        let mut maxclass = -1i32;
 
         ret.partitions = read_bits!(bitreader, 5);
         ret.partitions_class.resize(ret.partitions as usize, 0);
-        for i in 0..ret.partitions as usize {
-            let partitions_class = read_bits!(bitreader, 4);
-            maxclass = max(maxclass, partitions_class);
-            ret.partitions_class[i] = partitions_class;
+        for i in 0..ret.partitions_class.len() {
+            ret.partitions_class[i] = read_bits!(bitreader, 4);
         }
-        let maxclass = maxclass as usize + 1;
+        let maxclass = ret.partitions_class.iter().copied().max().unwrap() as usize + 1;
         ret.class_dim.resize(maxclass, 0);
         ret.class_subs.resize(maxclass, 0);
         ret.class_book.resize(maxclass, 0);
@@ -1246,6 +1243,7 @@ impl VorbisFloor1 {
 
         ret.mult = read_bits!(bitreader, 2).wrapping_add(1);
         let rangebits = read_bits!(bitreader, 4);
+        let maxrange = 1 << rangebits;
 
         let mut k = 0usize;
         let mut count = 0usize;
@@ -1257,7 +1255,7 @@ impl VorbisFloor1 {
             ret.postlist.resize(count + 2, 0);
             while k < count {
                 let t = read_bits!(bitreader, rangebits);
-                if t < 0 || t >= (1 << rangebits) {
+                if t < 0 || t >= maxrange {
                     return_Err!(AudioReadError::InvalidData(format!("Invalid value for postlist {t}")));
                 }
                 ret.postlist[k + 2] = t;
@@ -1265,7 +1263,7 @@ impl VorbisFloor1 {
             }
         }
         ret.postlist[0] = 0;
-        ret.postlist[1] = 1 << rangebits;
+        ret.postlist[1] = maxrange;
         ret.postlist[..(count + 2)].sort();
         for i in 1..(count + 2) {
             if ret.postlist[i - 1] == ret.postlist[i] {
@@ -1285,15 +1283,13 @@ impl VorbisPackableObject for VorbisFloor1 {
         let begin_bits = bitwriter.total_bits;
         let maxposit = self.postlist[1];
         let rangebits = ilog!(maxposit - 1);
-        let mut maxclass = -1i32;
+        // floor type
         write_bits!(bitwriter, 1, 16);
         write_bits!(bitwriter, self.partitions, 5);
         for i in 0..self.partitions_class.len() {
-            let partitions_class = self.partitions_class[i];
-            maxclass = max(maxclass, partitions_class);
-            write_bits!(bitwriter, partitions_class, 4);
+            write_bits!(bitwriter, self.partitions_class[i], 4);
         }
-        let maxclass = maxclass as usize + 1;
+        let maxclass = self.partitions_class.iter().copied().max().unwrap() as usize + 1;
         for i in 0..maxclass {
             write_bits!(bitwriter, self.class_dim[i].wrapping_sub(1), 3);
             write_bits!(bitwriter, self.class_subs[i], 2);

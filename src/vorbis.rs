@@ -1054,7 +1054,7 @@ pub enum VorbisFloor {
 
 impl VorbisFloor {
     pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<VorbisFloor, AudioReadError> {
-        let floor_type = bitreader.read(16)? as u16;
+        let floor_type = read_bits!(bitreader, 16);
         match floor_type {
             0 => Ok(VorbisFloor0::load(bitreader, vorbis_info)?),
             1 => Ok(VorbisFloor1::load(bitreader, vorbis_info)?),

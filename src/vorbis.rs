@@ -23,10 +23,10 @@ const MASK: [u32; 33] = [
     0x1fffffff, 0x3fffffff, 0x7fffffff, 0xffffffff
 ];
 
-const SHOW_DEBUG: bool = true;
-const DEBUG_ON_READ_BITS: bool = true;
+const SHOW_DEBUG: bool = false;
+const DEBUG_ON_READ_BITS: bool = false;
 const DEBUG_ON_WRITE_BITS: bool = false;
-const PANIC_ON_ERROR: bool = true;
+const PANIC_ON_ERROR: bool = false;
 macro_rules! debugln {
     () => {
         if SHOW_DEBUG {

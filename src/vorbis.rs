@@ -335,6 +335,12 @@ where
     }
 }
 
+/// * The specialized `BitWriter` that uses `CursorVecU8>` as its sink.
+pub type BitWriterCursor = BitWriter<CursorVecU8>;
+
+/// * The specialized `BitWriter` that uses `Box<dyn Writer>` as its sink.
+pub type BitWriterObj = BitWriter<Box<dyn Writer>>;
+
 impl BitWriter<CursorVecU8> {
     /// * Get the inner byte array and consumes the writer.
     pub fn into_bytes(mut self) -> Vec<u8> {
@@ -343,9 +349,6 @@ impl BitWriter<CursorVecU8> {
         self.writer.into_inner()
     }
 }
-
-/// * The specialized `BitWriter` that uses `Box<dyn Writer>` as its sink.
-pub type BitWriterObj = BitWriter<Box<dyn Writer>>;
 
 /// * Read bits of data using the environment `bitreader` variable, an instance of `BitReader`
 macro_rules! read_bits {

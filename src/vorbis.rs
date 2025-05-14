@@ -1913,12 +1913,15 @@ pub fn get_vorbis_headers_from_ogg_packet_bytes(data: &[u8], stream_id: &mut u32
 /// * The packets were all decoded.
 pub fn parse_vorbis_headers(data: &[u8], stream_id: &mut u32) -> Result<(VorbisIdentificationHeader, VorbisCommentHeader, VorbisSetupHeader), AudioReadError> {
     let (b1, b2, b3) = get_vorbis_headers_from_ogg_packet_bytes(data, stream_id)?;
+    debugln!("b1 = [{}]", format_array!(b1, " ", "{:02x}"));
+    debugln!("b2 = [{}]", format_array!(b2, " ", "{:02x}"));
+    debugln!("b3 = [{}]", format_array!(b3, " ", "{:02x}"));
     let mut br1 = BitReader::new(&b1);
     let mut br2 = BitReader::new(&b2);
     let mut br3 = BitReader::new(&b3);
-    let h1 = VorbisIdentificationHeader::load(&mut br1)?;
-    let h2 = VorbisCommentHeader::load(&mut br2)?;
-    let h3 = VorbisSetupHeader::load(&mut br3, &h1)?;
+    let h1 = VorbisIdentificationHeader::load(&mut br1).unwrap();
+    let h2 = VorbisCommentHeader::load(&mut br2).unwrap();
+    let h3 = VorbisSetupHeader::load(&mut br3, &h1).unwrap();
     Ok((h1, h2, h3))
 }
 
@@ -2240,10 +2243,32 @@ fn test_parse_vorbis_headers() {
         0x14, 0x95, 0x00, 0x00, 0x40, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x10, 0x40, 0x00, 0x02, 0x02,
         0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x02
     ];
+    let test_header = &test_header[..];
 
     let mut stream_id = 0u32;
-    let (vorbis_identification_header, vorbis_comment_header, vorbis_setup_header) = parse_vorbis_headers(&test_header, &mut stream_id).unwrap();
+    let (vorbis_identification_header, vorbis_comment_header, vorbis_setup_header) = parse_vorbis_headers(test_header, &mut stream_id).unwrap();
+
+    use crate::ogg::OggStreamWriter;
+    use crate::io_utils::SharedCursor;
+    let data = SharedCursor::new();
+    let mut ogg_stream_writer = OggStreamWriter::new(data.clone(), stream_id);
+    ogg_stream_writer.write_all(&vorbis_identification_header.to_packed().unwrap().data).unwrap();
+    ogg_stream_writer.seal_packet(0, false).unwrap();
+    ogg_stream_writer.write_all(&vorbis_comment_header.to_packed().unwrap().data).unwrap();
+    ogg_stream_writer.write_all(&vorbis_setup_header.to_packed().unwrap().data).unwrap();
+    ogg_stream_writer.seal_packet(0, false).unwrap();
+    ogg_stream_writer.flush().unwrap();
+    let new_bytes = &data.get_vec();
+
     dbg!(vorbis_identification_header);
     dbg!(vorbis_comment_header);
     dbg!(vorbis_setup_header);
+
+    let (vorbis_identification_header_2, vorbis_comment_header_2, vorbis_setup_header_2) = parse_vorbis_headers(new_bytes, &mut stream_id).unwrap();
+
+    dbg!(vorbis_identification_header_2);
+    dbg!(vorbis_comment_header_2);
+    dbg!(vorbis_setup_header_2);
+
+    assert_eq!(test_header, new_bytes);
 }

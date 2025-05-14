@@ -877,7 +877,9 @@ impl VorbisPackableObject for CodeBooks {
         for book in self.books.iter() {
             book.pack(bitwriter)?;
         }
-        Ok(bitwriter.total_bits - begin_bits)
+        let total_bits = bitwriter.total_bits - begin_bits;
+        assert_eq!(total_bits, self.total_bits);
+        Ok(total_bits)
     }
 }
 

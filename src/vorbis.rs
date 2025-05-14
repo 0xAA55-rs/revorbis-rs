@@ -477,21 +477,17 @@ impl CodeBook {
     /// readies the codebook auxiliary structures for decode
     pub fn load(bitreader: &mut BitReader) -> Result<Self, AudioReadError> {
         let mut ret = Self::default();
-        ret.parse_book(bitreader)?;
-        Ok(ret)
-    }
 
-    fn parse_book(&mut self, bitreader: &mut BitReader) -> Result<(), AudioReadError> {
         /* make sure alignment is correct */
         if read_bits!(bitreader, 24) != 0x564342 {
             return_Err!(AudioReadError::FormatError("Check the `BCV` flag failed.".to_string()));
         }
 
         /* first the basic parameters */
-        self.dim = read_bits!(bitreader, 16);
-        self.entries = read_bits!(bitreader, 24);
-        if ilog!(self.dim) + ilog!(self.entries) > 24 {
-            return_Err!(AudioReadError::FormatError(format!("{} + {} > 24", ilog!(self.dim), ilog!(self.entries))));
+        ret.dim = read_bits!(bitreader, 16);
+        ret.entries = read_bits!(bitreader, 24);
+        if ilog!(ret.dim) + ilog!(ret.entries) > 24 {
+            return_Err!(AudioReadError::FormatError(format!("{} + {} > 24", ilog!(ret.dim), ilog!(ret.entries))));
         }
 
         /* codeword ordering.... length ordered or unordered? */
@@ -501,37 +497,37 @@ impl CodeBook {
                 let unused = read_bits!(bitreader, 1) != 0;
 
                 /* unordered */
-                self.lengthlist.resize(self.entries as usize, 0);
+                ret.lengthlist.resize(ret.entries as usize, 0);
 
                 /* allocated but unused entries? */
                 if unused {
                     /* yes, unused entries */
-                    for i in 0..self.entries as usize {
+                    for i in 0..ret.entries as usize {
                         if read_bits!(bitreader, 1) != 0 {
                             let num = read_bits!(bitreader, 5).wrapping_add(1) as i8;
-                            self.lengthlist[i] = num;
+                            ret.lengthlist[i] = num;
                         } else {
-                            self.lengthlist[i] = 0;
+                            ret.lengthlist[i] = 0;
                         }
                     }
                 } else { /* all entries used; no tagging */
-                    for i in 0..self.entries as usize {
+                    for i in 0..ret.entries as usize {
                         let num = read_bits!(bitreader, 5).wrapping_add(1) as i8;
-                        self.lengthlist[i] = num;
+                        ret.lengthlist[i] = num;
                     }
                 }
             }
             1 => { /* ordered */
                 let mut length = read_bits!(bitreader, 5).wrapping_add(1) as i8;
-                self.lengthlist.resize(self.entries as usize, 0);
+                ret.lengthlist.resize(ret.entries as usize, 0);
                 let mut i = 0;
-                while i < self.entries {
-                    let num = read_bits!(bitreader, ilog!(self.entries - i));
-                    if length > 32 || num > self.entries - i || (num > 0 && (num - 1) >> (length - 1) > 1) {
-                        return_Err!(AudioReadError::FormatError(format!("length({length}) > 32 || num({num}) > entries({}) - i({i}) || (num({num}) > 0 && (num({num}) - 1) >> (length({length}) - 1) > 1)", self.entries)));
+                while i < ret.entries {
+                    let num = read_bits!(bitreader, ilog!(ret.entries - i));
+                    if length > 32 || num > ret.entries - i || (num > 0 && (num - 1) >> (length - 1) > 1) {
+                        return_Err!(AudioReadError::FormatError(format!("length({length}) > 32 || num({num}) > entries({}) - i({i}) || (num({num}) > 0 && (num({num}) - 1) >> (length({length}) - 1) > 1)", ret.entries)));
                     }
                     for _ in 0..num {
-                        self.lengthlist[i as usize] = length;
+                        ret.lengthlist[i as usize] = length;
                         i += 1;
                     }
                     length += 1;
@@ -541,32 +537,32 @@ impl CodeBook {
         }
 
         /* Do we have a mapping to unpack? */
-        self.maptype = read_bits!(bitreader, 4);
-        match self.maptype {
+        ret.maptype = read_bits!(bitreader, 4);
+        match ret.maptype {
             0 => (),
             1 | 2 => {
                 /* implicitly populated value mapping */
                 /* explicitly populated value mapping */
-                self.q_min = read_bits!(bitreader, 32);
-                self.q_delta = read_bits!(bitreader, 32);
-                self.q_quant = read_bits!(bitreader, 4).wrapping_add(1);
-                self.q_sequencep = read_bits!(bitreader, 1);
+                ret.q_min = read_bits!(bitreader, 32);
+                ret.q_delta = read_bits!(bitreader, 32);
+                ret.q_quant = read_bits!(bitreader, 4).wrapping_add(1);
+                ret.q_sequencep = read_bits!(bitreader, 1);
 
-                let quantvals = match self.maptype {
-                    1 => if self.dim == 0 {0} else {self.book_maptype1_quantvals() as usize},
-                    2 => self.entries as usize * self.dim as usize,
+                let quantvals = match ret.maptype {
+                    1 => if ret.dim == 0 {0} else {ret.book_maptype1_quantvals() as usize},
+                    2 => ret.entries as usize * ret.dim as usize,
                     _ => unreachable!(),
                 };
 
                 /* quantized values */
-                self.quantlist.resize(quantvals, 0);
+                ret.quantlist.resize(quantvals, 0);
                 for i in 0..quantvals {
-                    self.quantlist[i] = read_bits!(bitreader, self.q_quant);
+                    ret.quantlist[i] = read_bits!(bitreader, ret.q_quant);
                 }
             }
             o => return_Err!(AudioReadError::FormatError(format!("Unexpected maptype {o}"))),
         }
-        Ok(())
+        Ok(ret)
     }
 
     /// there might be a straightforward one-line way to do the below

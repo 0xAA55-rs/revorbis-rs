@@ -1014,6 +1014,10 @@ impl VorbisCommentHeader {
                 }
                 comments.push(read_string!(bitreader, comment_len as usize)?);
             }
+            let end_of_packet = read_bits!(bitreader, 1) & 1 == 1;
+            if !end_of_packet {
+                return_Err!(AudioReadError::InvalidData(format!("End of packet flag == {end_of_packet}")));
+            }
             Ok(Self{
                 comments,
                 vendor,
@@ -1036,6 +1040,7 @@ impl VorbisPackableObject for VorbisCommentHeader {
             write_bits!(bitwriter, comment.len(), 32);
             write_string!(bitwriter, comment);
         }
+        write_bits!(bitwriter, 1, 1);
         Ok(bitwriter.total_bits - begin_bits)
     }
 }
@@ -1821,9 +1826,9 @@ impl VorbisSetupHeader {
                 ret.modes.push(VorbisMode::load(bitreader, &ret)?);
             }
 
-            let eop = read_bits!(bitreader, 1) != 0;
-            if !eop {
-                return_Err!(AudioReadError::InvalidData("Missing End Of Packet bit.".to_string()));
+            let end_of_packet = read_bits!(bitreader, 1) & 1 == 1;
+            if !end_of_packet {
+                return_Err!(AudioReadError::InvalidData(format!("End of packet flag == {end_of_packet}")));
             }
 
             Ok(ret)

@@ -23,7 +23,7 @@ const MASK: [u32; 33] = [
     0x1fffffff, 0x3fffffff, 0x7fffffff, 0xffffffff
 ];
 
-const SHOW_DEBUG: bool = false;
+const SHOW_DEBUG: bool = true;
 macro_rules! debugln {
     () => {
         if SHOW_DEBUG {
@@ -465,27 +465,26 @@ impl CodeBook {
         if read_bits!(bitreader, 24) != 0x564342 {
             return Err(AudioReadError::FormatError("Check the `BCV` flag failed.".to_string()));
         }
+
         /* first the basic parameters */
         self.dim = read_bits!(bitreader, 16);
         self.entries = read_bits!(bitreader, 24);
         if ilog!(self.dim) + ilog!(self.entries) > 24 {
             return Err(AudioReadError::FormatError(format!("{} + {} > 24", ilog!(self.dim), ilog!(self.entries))));
         }
+
         /* codeword ordering.... length ordered or unordered? */
         match read_bits!(bitreader, 1) {
             0 => {
-                debugln!("  unordered");
-
                 /* allocated but unused entries? */
                 let unused = read_bits!(bitreader, 1) != 0;
 
                 /* unordered */
                 self.lengthlist.resize(self.entries as usize, 0);
+
                 /* allocated but unused entries? */
                 if unused {
                     /* yes, unused entries */
-                    debugln!("  with unused entries");
-
                     for i in 0..self.entries as usize {
                         if read_bits!(bitreader, 1) != 0 {
                             let num = read_bits!(bitreader, 5).wrapping_add(1) as i8;
@@ -502,8 +501,6 @@ impl CodeBook {
                 }
             }
             1 => { /* ordered */
-                debugln!("  ordered");
-
                 let mut length = read_bits!(bitreader, 5).wrapping_add(1) as i8;
                 self.lengthlist.resize(self.entries as usize, 0);
                 let mut i = 0;
@@ -522,11 +519,8 @@ impl CodeBook {
             o => return Err(AudioReadError::FormatError(format!("Unexpected codeword ordering {o}"))),
         }
 
-        debugln!("  lengthlist: [{}]", format_array!(&self.lengthlist, ", ", "{:02}"));
-
         /* Do we have a mapping to unpack? */
         self.maptype = read_bits!(bitreader, 4);
-        debugln!("  maptype: {}", self.maptype);
         match self.maptype {
             0 => (),
             1 | 2 => {
@@ -537,26 +531,17 @@ impl CodeBook {
                 self.q_quant = read_bits!(bitreader, 4).wrapping_add(1);
                 self.q_sequencep = read_bits!(bitreader, 1);
 
-                debugln!("    q_min: {}", self.q_min);
-                debugln!("    q_delta: {}", self.q_delta);
-                debugln!("    q_quant: {}", self.q_quant);
-                debugln!("    q_sequencep: {}", self.q_sequencep);
-
                 let quantvals = match self.maptype {
                     1 => if self.dim == 0 {0} else {self.book_maptype1_quantvals() as usize},
                     2 => self.entries as usize * self.dim as usize,
                     _ => unreachable!(),
                 };
 
-                debugln!("    quantvals: {quantvals}");
-
                 /* quantized values */
                 self.quantlist.resize(quantvals, 0);
                 for i in 0..quantvals {
                     self.quantlist[i] = read_bits!(bitreader, self.q_quant);
                 }
-
-                debugln!("    quantlist: [{}]", format_array!(&self.quantlist, ", ", "0x{:04}"));
             }
             o => return Err(AudioReadError::FormatError(format!("Unexpected maptype {o}"))),
         }
@@ -807,8 +792,7 @@ impl CodeBooks {
         let num_books = (bitreader.read(8)? + 1) as usize;
         let mut books = Vec::<CodeBook>::with_capacity(num_books);
         let mut bits_of_books = Vec::<usize>::with_capacity(num_books);
-        for i in 0..num_books {
-            debugln!("Reading codebook {i}");
+        for _ in 0..num_books {
             let cur_bit_pos = bitreader.total_bits;
             books.push(CodeBook::load(bitreader)?);
             bits_of_books.push(bitreader.total_bits - cur_bit_pos);

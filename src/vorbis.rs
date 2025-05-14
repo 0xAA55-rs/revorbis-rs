@@ -341,11 +341,11 @@ pub type BitWriterCursor = BitWriter<CursorVecU8>;
 /// * The specialized `BitWriter` that uses `Box<dyn Writer>` as its sink.
 pub type BitWriterObj = BitWriter<Box<dyn Writer>>;
 
-impl BitWriter<CursorVecU8> {
+impl BitWriterCursor {
     /// * Get the inner byte array and consumes the writer.
     pub fn into_bytes(mut self) -> Vec<u8> {
         // Make sure the last byte was written
-        self.flush().unwrap();
+        self.force_flush().unwrap();
         self.writer.into_inner()
     }
 }

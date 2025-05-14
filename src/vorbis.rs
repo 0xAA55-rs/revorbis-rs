@@ -326,6 +326,13 @@ where
             Ok(())
         }
     }
+
+    pub fn force_flush(&mut self) -> Result<(), AudioWriteError> {
+        self.writer.write_all(&self.cache[..])?;
+        self.cache.clear();
+        self.endbit = 0;
+        Ok(())
+    }
 }
 
 impl BitWriter<CursorVecU8> {

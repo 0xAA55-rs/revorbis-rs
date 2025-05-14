@@ -1169,7 +1169,7 @@ pub struct VorbisFloor1 {
     pub class_book: CopiableBuffer<i32, 16>,
 
     /// [VIF_CLASS][subs]
-    pub class_subbook: CopiableBuffer<[i32; 8], 16>,
+    pub class_subbook: CopiableBuffer<CopiableBuffer<i32, 8>, 16>,
 
     /// 1 2 3 or 4
     pub mult: i32,
@@ -1212,7 +1212,7 @@ impl VorbisFloor1 {
         ret.class_dim.resize(maxclass, 0);
         ret.class_subs.resize(maxclass, 0);
         ret.class_book.resize(maxclass, 0);
-        ret.class_subbook.resize(maxclass, [0; 8]);
+        ret.class_subbook.resize(maxclass, CopiableBuffer::default());
 
         for i in 0..maxclass {
             ret.class_dim[i] = read_bits!(bitreader, 3).wrapping_add(1);
@@ -1223,7 +1223,9 @@ impl VorbisFloor1 {
             if ret.class_book[i] as usize >= static_codebooks.len() {
                 return Err(AudioReadError::InvalidData(format!("Invalid class book index {}, max books is {}", ret.class_book[i], static_codebooks.len())));
             }
-            for k in 0..(1 << ret.class_subs[i]) {
+            let sublen = 1usize << ret.class_subs[i];
+            ret.class_subbook[i].resize(sublen, 0);
+            for k in 0..sublen {
                 let subbook_index = read_bits!(bitreader, 8).wrapping_sub(1);
                 if subbook_index < -1 || subbook_index >= static_codebooks.len() as i32 {
                     return Err(AudioReadError::InvalidData(format!("Invalid class subbook index {subbook_index}, max books is {}", static_codebooks.len())));
@@ -1288,7 +1290,7 @@ impl VorbisPackableObject for VorbisFloor1 {
             if self.class_subs[i] != 0 {
                 write_bits!(bitwriter, self.class_book[i], 8);
             }
-            for k in 0..(1 << self.class_subs[i]) as usize {
+            for k in 0..self.class_subbook[i].len() {
                 write_bits!(bitwriter, self.class_subbook[i][k].wrapping_add(1), 8);
             }
         }

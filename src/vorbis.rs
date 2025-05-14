@@ -24,6 +24,8 @@ const MASK: [u32; 33] = [
 ];
 
 const SHOW_DEBUG: bool = true;
+const DEBUG_ON_READ_BITS: bool = true;
+const DEBUG_ON_WRITE_BITS: bool = false;
 macro_rules! debugln {
     () => {
         if SHOW_DEBUG {
@@ -353,14 +355,22 @@ impl BitWriterCursor {
 /// * Read bits of data using the environment `bitreader` variable, an instance of `BitReader`
 macro_rules! read_bits {
     ($bitreader:ident, $bits:expr) => {
-        $bitreader.read($bits)?
+        if DEBUG_ON_READ_BITS {
+            $bitreader.read($bits).unwrap()
+        } else {
+            $bitreader.read($bits)?
+        }
     };
 }
 
 /// * Write bits of data using the environment `bitwriter` variable, an instance of `BitWriter<W>`
 macro_rules! write_bits {
     ($bitwriter:ident, $data:expr, $bits:expr) => {
-        $bitwriter.write($data as u32, $bits)?
+        if DEBUG_ON_WRITE_BITS {
+            $bitwriter.write($data as u32, $bits).unwrap()
+        } else {
+            $bitwriter.write($data as u32, $bits)?
+        }
     };
 }
 

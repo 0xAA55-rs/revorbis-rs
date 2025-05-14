@@ -1023,6 +1023,7 @@ impl VorbisPackableObject for VorbisCommentHeader {
         write_slice!(bitwriter, b"\x03vorbis");
         write_bits!(bitwriter, self.vendor.len(), 32);
         write_string!(bitwriter, self.vendor);
+        write_bits!(bitwriter, self.comments.len(), 32);
         for comment in self.comments.iter() {
             write_bits!(bitwriter, comment.len(), 32);
             write_string!(bitwriter, comment);

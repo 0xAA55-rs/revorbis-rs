@@ -13,6 +13,9 @@ tinyogg.workspace = true
 copiablebuf.workspace = true
 shared_io_utils.workspace = true
 
+[profile.release]
+lto = "fat"
+
 [lib]
 name = "revorbis"
 path = "src/vorbis.rs"

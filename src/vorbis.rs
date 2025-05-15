@@ -1760,7 +1760,7 @@ impl VorbisPackableObject for VorbisMode {
     }
 }
 
-/// * The `VorbisSetupHeader` is the Vorbis setup header, the second header
+/// * The `VorbisSetupHeader` is the Vorbis setup header, the third header
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct VorbisSetupHeader {
     pub static_codebooks: CodeBooks,

@@ -1,17 +1,18 @@
 [package]
 name = "revorbis-rs"
-version = "0.0.2"
-edition.workspace = true
-authors.workspace = true
-license-file.workspace = true
-repository.workspace = true
+version = "0.0.3"
+edition = "2024"
+authors = ["0xAA55 <838816058@qq.com>"]
+license-file = "LICENSE"
+repository = "https://github.com/0xAA55-rs/revorbis-rs"
+readme = "Readme.md"
 description = "A try to rewrite libvorbis in Rust."
 keywords = ["vorbis", "audio"]
 
 [dependencies]
-tinyogg.workspace = true
-copiablebuf.workspace = true
-shared_io_utils.workspace = true
+tinyogg = "^0"
+copiablebuf = "^0"
+shared_io_utils = "^0"
 
 [lib]
 name = "revorbis"

@@ -1,12 +1,3 @@
 /target
 .vscode
 Cargo.lock
-*.log
-*.wav
-*.mp3
-*.flac
-*.m4a
-*.ogg
-*.sublime*
-*.exe
-stopplay.bat

@@ -6,12 +6,16 @@ use std::{
     mem,
     ops::{Index, IndexMut, Range, RangeFrom, RangeTo, RangeFull},
 };
-#[macro_use]
-pub mod bitwise;
+use crate::bitwise::*;
+use crate::mdct::MdctLookup;
+use crate::envelope::VorbisEnvelopeLookup;
+
 use ogg::{OggPacket, OggPacketType};
 use bitwise::BitwiseData;
 use io_utils::{Writer, CursorVecU8};
 use copiablebuf::CopiableBuffer;
+
+use mdct::MdctLookup;
 
 const MASK: [u32; 33] = [
     0x00000000,
@@ -1885,6 +1889,38 @@ impl VorbisPackableObject for VorbisSetupHeader {
         Ok(bitwriter.total_bits - begin_bits)
     }
 }
+
+/// * The `VorbisInfo` structure
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct VorbisInfo {
+    pub identification: VorbisIdentificationHeader,
+    pub codec_setup: VorbisSetupHeader,
+}
+
+impl VorbisInfo {
+    pub fn new(identification_header: &VorbisIdentificationHeader, setup_header: &VorbisSetupHeader) -> Self {
+        Self {
+            identification: identification_header.clone(),
+            codec_setup: setup_header.clone()
+        }
+    }
+}
+
+/// * The private part of the `VorbisDspState` for `libvorbis-1.3.7`
+#[derive(Debug, Default, Clone, PartialEq)]
+struct VorbisDspStatePrivate {
+
+}
+
+
+/// * Am I going to reinvent the `libvorbis` wheel myself?
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct VorbisDspState {
+    pub info: VorbisInfo,
+    backend_state: VorbisDspStatePrivate,
+}
+
+
 
 /// * This function extracts data from some Ogg packets, the packets contains the Vorbis headers.
 /// * There are 3 kinds of Vorbis headers, they are the identification header, the metadata header, and the setup header.

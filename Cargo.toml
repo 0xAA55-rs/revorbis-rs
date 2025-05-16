@@ -1,6 +1,6 @@
 [package]
 name = "revorbis-rs"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2024"
 authors = ["0xAA55 <838816058@qq.com>"]
 license-file = "LICENSE"
@@ -16,4 +16,4 @@ shared_io_utils = "^0"
 
 [lib]
 name = "revorbis"
-path = "src/vorbis.rs"
+path = "src/lib.rs"

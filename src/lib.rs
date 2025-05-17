@@ -4,6 +4,7 @@ pub mod vorbis;
 pub mod bitwise;
 
 pub mod mdct;
+mod codebook;
 
 pub mod envelope;
 

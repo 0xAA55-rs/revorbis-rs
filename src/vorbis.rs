@@ -209,10 +209,19 @@ impl VorbisPackableObject for VorbisMode {
 /// * The `VorbisSetupHeader` is the Vorbis setup header, the third header
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct VorbisSetupHeader {
+    /// Static codebooks
     pub static_codebooks: CodeBooks,
+
+    /// Floors
     pub floors: Vec<VorbisFloor>,
+
+    /// Residues
     pub residues: Vec<VorbisResidue>,
+
+    /// Maps
     pub maps: Vec<VorbisMapping>,
+
+    /// Modes
     pub modes: Vec<VorbisMode>,
 }
 

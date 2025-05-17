@@ -40,16 +40,6 @@ macro_rules! deref {
 }
 
 impl DrftLookup {
-    pub fn new(n: usize) -> Self {
-        let mut ret =Self {
-            n,
-            trigcache: vec![0.0; n * 3],
-            splitcache: [0; 32],
-        };
-        Self::fdrffti(n, &mut ret.trigcache, &mut ret.splitcache);
-        ret
-    }
-
     fn fdrffti(n: usize, wsave: &mut [f32], ifac: &mut [i32]) {
         if n == 1 {
             return;
@@ -790,4 +780,14 @@ impl DrftLookup {
             
         }
     }
-}
+
+    pub fn new(n: usize) -> Self {
+        let mut ret =Self {
+            n,
+            trigcache: vec![0.0; n * 3],
+            splitcache: [0; 32],
+        };
+        Self::fdrffti(n, &mut ret.trigcache, &mut ret.splitcache);
+        ret
+    }
+

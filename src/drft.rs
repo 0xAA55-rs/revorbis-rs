@@ -195,7 +195,7 @@ impl DrftLookup {
         }
     }
 
-    fn dradf4(ido: usize, l1: usize, cc: &[f32], ch: &mut [f32], wa1: &[f32], wa2: &[f32], wa3: &[f32]) {
+    unsafe fn dradf4(ido: usize, l1: usize, cc: *const f32, ch: *mut f32, wa1: &[f32], wa2: &[f32], wa3: &[f32]) {
         let hsqt2 = 2.0_f32.sqrt() * 0.5;
         let t0 = l1 * ido;
         let mut t1 = t0;
@@ -204,15 +204,17 @@ impl DrftLookup {
         let mut t3 = 0;
 
         for _ in 0..l1 {
-            let tr1 = cc[t1] + cc[t2];
-            let tr2 = cc[t3] + cc[t4];
+            unsafe {
+                let tr1 = deref!(cc[t1]) + deref!(cc[t2]);
+                let tr2 = deref!(cc[t3]) + deref!(cc[t4]);
 
-            let mut t5 = t3 << 2;
-            ch[t5] = tr1 + tr2;
-            ch[(ido << 2) + t5 - 1] = tr2 - tr1;
-            t5 += ido << 1;
-            ch[t5 - 1] = cc[t3] - cc[t4];
-            ch[t5] = cc[t2] - cc[t1];
+                let mut t5 = t3 << 2;
+                deref!(ch[t5]) = tr1 + tr2;
+                deref!(ch[(ido << 2) + t5 - 1]) = tr2 - tr1;
+                t5 += ido << 1;
+                deref!(ch[t5 - 1]) = deref!(cc[t3]) - deref!(cc[t4]);
+                deref!(ch[t5]) = deref!(cc[t2]) - deref!(cc[t1]);
+            }
 
             t1 += ido;
             t2 += ido;
@@ -235,37 +237,36 @@ impl DrftLookup {
                     t4 += 2;
                     t5 -= 2;
 
-                    t3 += t0;
-                    let cr2 = wa1[i - 2] * cc[t3 - 1] + wa1[i - 1] * cc[t3];
-                    let ci2 = wa1[i - 2] * cc[t3] - wa1[i - 1] * cc[t3 - 1];
-                    t3 += t0;
-                    let cr3 = wa2[i - 2] * cc[t3 - 1] + wa2[i - 1] * cc[t3];
-                    let ci3 = wa2[i - 2] * cc[t3] - wa2[i - 1] * cc[t3 - 1];
-                    t3 += t0;
-                    let cr4 = wa2[i - 2] * cc[t3 - 1] + wa3[i - 1] * cc[t3];
-                    let ci4 = wa2[i - 2] * cc[t3] - wa3[i - 1] * cc[t3 - 1];
+                    unsafe {
+                        t3 += t0;
+                        let cr2 = wa1[i - 2] * deref!(cc[t3 - 1]) + wa1[i - 1] * deref!(cc[t3 + 0]);
+                        let ci2 = wa1[i - 2] * deref!(cc[t3 + 0]) - wa1[i - 1] * deref!(cc[t3 - 1]);
+                        t3 += t0;
+                        let cr3 = wa2[i - 2] * deref!(cc[t3 - 1]) + wa2[i - 1] * deref!(cc[t3 + 0]);
+                        let ci3 = wa2[i - 2] * deref!(cc[t3 + 0]) - wa2[i - 1] * deref!(cc[t3 - 1]);
+                        t3 += t0;
+                        let cr4 = wa2[i - 2] * deref!(cc[t3 - 1]) + wa3[i - 1] * deref!(cc[t3 + 0]);
+                        let ci4 = wa2[i - 2] * deref!(cc[t3 + 0]) - wa3[i - 1] * deref!(cc[t3 - 1]);
 
-                    let tr1 = cr2 + cr4;
-                    let tr4 = cr4 - cr2;
-                    let ti1 = ci2 + ci4;
-                    let ti4 = ci2 - ci4;
+                        let tr1 = cr2 + cr4;
+                        let tr4 = cr4 - cr2;
+                        let ti1 = ci2 + ci4;
+                        let ti4 = ci2 - ci4;
 
-                    let ti2 = cc[t2] + ci3;
-                    let ti3 = cc[t2] - ci3;
-                    let tr2 = cc[t2 - 1] + cr3;
-                    let tr3 = cc[t2 - 1] - cr3;
+                        let ti2 = deref!(cc[t2 + 0]) + ci3;
+                        let ti3 = deref!(cc[t2 + 0]) - ci3;
+                        let tr2 = deref!(cc[t2 - 1]) + cr3;
+                        let tr3 = deref!(cc[t2 - 1]) - cr3;
 
-                    ch[t4 - 1] = tr1 + tr2;
-                    ch[t4] = ti1 + ti2;
-
-                    ch[t5 - 1] = tr3 - ti4;
-                    ch[t5] = tr4 - ti3;
-
-                    ch[t4 + t6 - 1] = ti4 + tr3;
-                    ch[t4 + t6] = tr4 + ti3;
-
-                    ch[t5 + t6 - 1] = tr2 - tr1;
-                    ch[t5 + t6] = ti1 - ti2;
+                        deref!(ch[t4 - 1]) = tr1 + tr2;
+                        deref!(ch[t4 + 0]) = ti1 + ti2;
+                        deref!(ch[t5 - 1]) = tr3 - ti4;
+                        deref!(ch[t5 + 0]) = tr4 - ti3;
+                        deref!(ch[t4 + t6 - 1]) = ti4 + tr3;
+                        deref!(ch[t4 + t6 + 0]) = tr4 + ti3;
+                        deref!(ch[t5 + t6 - 1]) = tr2 - tr1;
+                        deref!(ch[t5 + t6 + 0]) = ti1 - ti2;
+                    }
                 }
                 t1 += ido;
             }
@@ -282,14 +283,16 @@ impl DrftLookup {
         let mut t6 = ido;
 
         for _ in 0..l1 {
-            let ti1 = -hsqt2 * (cc[t1] + cc[t2]);
-            let tr1 =  hsqt2 * (cc[t1] - cc[t2]);
+            unsafe {
+                let ti1 = -hsqt2 * (deref!(cc[t1]) + deref!(cc[t2]));
+                let tr1 =  hsqt2 * (deref!(cc[t1]) - deref!(cc[t2]));
 
-            ch[t4 - 1] = tr1 + cc[t6 - 1];
-            ch[t4 + t5 - 1] = cc[t6 - 1] - tr1;
+                deref!(ch[t4 - 1]) = tr1 + deref!(cc[t6 - 1]);
+                deref!(ch[t4 + t5 - 1]) = deref!(cc[t6 - 1]) - tr1;
 
-            ch[t4] = ti1 - cc[t1 + t0];
-            ch[t4 + t5] = ti1 + cc[t1 + t0];
+                deref!(ch[t4]) = ti1 - deref!(cc[t1 + t0]);
+                deref!(ch[t4 + t5]) = ti1 + deref!(cc[t1 + t0]);
+            }
 
             t1 += ido;
             t2 += ido;

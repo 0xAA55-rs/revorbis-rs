@@ -49,7 +49,7 @@ impl DrftLookup {
 
     fn drfti1(n: usize, wa: &mut [f32], ifac: &mut [i32]) {
         let ntryh = [4, 2, 3, 5];
-        let tpi = std::f32::consts::PI * 2.0;
+        const TPI: f32 = std::f32::consts::PI * 2.0;
 
         let mut ntry = 0;
         let mut j = -1i32;
@@ -106,7 +106,7 @@ impl DrftLookup {
         if nfm1 == 0 {
             return;
         }
-        let argh = tpi / n as f32;
+        let argh = TPI / n as f32;
         let mut l1 = 1;
         let mut is = 0;
         for k1 in 0..nfm1 {
@@ -293,8 +293,8 @@ impl DrftLookup {
     }
 
     unsafe fn dradfg(ido: usize, ip: usize, l1: usize, idl1: usize, cc: *mut f32, c1: *mut f32, c2: *mut f32, ch: *mut f32, ch2: *mut f32, wa: &[f32]) {
+        const TPI: f32 = std::f32::consts::PI * 2.0;
         unsafe {
-            let tpi = std::f32::consts::PI * 2.0;
             let t0 = l1 * ido;
             let ipp2 = ip;
             let ipph = (ip + 1) >> 1;

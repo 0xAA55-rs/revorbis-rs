@@ -5,6 +5,7 @@ pub mod bitwise;
 
 pub mod mdct;
 mod codebook;
+mod floor;
 
 pub const SHOW_DEBUG: bool = false;
 pub const DEBUG_ON_READ_BITS: bool = false;

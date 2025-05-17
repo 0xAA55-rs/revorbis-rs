@@ -1268,6 +1268,74 @@ impl DrftLookup {
         }
     }
 
+    unsafe fn drftb1(n: usize, c: *mut f32, ch: *mut f32, wa: &[f32], ifac: &[i32]) {
+        let nf = ifac[1] as usize;
+        let mut na = 0;
+        let mut l1 = 1;
+        let mut iw = 1;
+
+        for k1 in 0..nf {
+            let ip = ifac[k1 + 2] as usize;
+            let l2 = ip * l1;
+            let ido = n / l2;
+            let idl1 = ido * l1;
+            match ip {
+                4 => {
+                    let ix2 = iw + ido;
+                    let ix3 = ix2 + ido;
+                    unsafe {
+                        if na != 0 {
+                            Self::dradb4(ido, l1, ch, c, &wa[iw - 1..], &wa[ix2 - 1..], &wa[ix3 - 1..]);
+                        } else {
+                            Self::dradb4(ido, l1, c, ch, &wa[iw - 1..], &wa[ix2 - 1..], &wa[ix3 - 1..]);
+                        }
+                    }
+                    na = 1 - na;
+                }
+                3 => {
+                    let ix2 = iw + ido;
+                    unsafe {
+                        if na != 0 {
+                            Self::dradb3(ido, l1, ch, c, &wa[iw - 1..], &wa[ix2 - 1..]);
+                        } else {
+                            Self::dradb3(ido, l1, c, ch, &wa[iw - 1..], &wa[ix2 - 1..]);
+                        }
+                    }
+                    na = 1 - na;
+                }
+                2 => {
+                    unsafe {
+                        if na != 0 {
+                            Self::dradb2(ido, l1, ch, c, &wa[iw - 1..]);
+                        } else {
+                            Self::dradb2(ido, l1, c, ch, &wa[iw - 1..]);
+                        }
+                    }
+                    na = 1 - na;
+                }
+                _ => {
+                    unsafe {
+                        if na != 0 {
+                            Self::dradbg(ido, ip, l1, idl1, ch, ch, ch, c, c, &wa[iw - 1..]);
+                        } else {
+                            Self::dradbg(ido, ip, l1, idl1, c, c, c, ch, ch, &wa[iw - 1..]);
+                        }
+                    }
+                    if ido == 1 {
+                        na = 1 - na;
+                    }
+                }
+            }
+            l1 = l2;
+            iw += (ip - 1) * ido;
+        }
+
+        if na == 0 {
+            return;
+        }
+
+        for i in 0..n {
+            unsafe {deref!(c[i]) = deref!(ch[i])};
         }
     }
 

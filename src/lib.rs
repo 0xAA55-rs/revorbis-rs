@@ -12,6 +12,7 @@ mod bitrate;
 
 mod mdct;
 mod drft;
+mod envelope;
 
 pub use utils::*;
 pub use bitwise::*;

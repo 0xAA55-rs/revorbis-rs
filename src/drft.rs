@@ -630,7 +630,7 @@ impl DrftLookup {
         }
     }
 
-    fn drftf1(n: usize, c: &mut [f32], ch: &mut [f32], wa: &[f32], ifac: &[i32]) {
+    unsafe fn drftf1(n: usize, c: *mut f32, ch: *mut f32, wa: &[f32], ifac: &[i32]) {
         let nf = ifac[1] as usize;
         let mut na = 1;
         let mut l2 = n;
@@ -644,31 +644,37 @@ impl DrftLookup {
             let idl1 = ido * l1;
             iw -= (ip - 1) * ido;
             na = 1 - na;
-            if ip == 4 {
-                let ix2 = iw + ido;
-                let ix3 = ix2 + ido;
-                if na != 0 {
-                    Self::dradf4(ido, l1, ch, c, &wa[iw - 1..], &wa[ix2 - 1..], &wa[ix3 - 1..]);
-                } else {
-                    Self::dradf4(ido, l1, c, ch, &wa[iw - 1..], &wa[ix2 - 1..], &wa[ix3 - 1..]);
-                }
-            } else {
-                if ip == 2 {
-                    if na == 0 {
-                        Self::dradf2(ido, l1, c, ch, &wa[iw - 1..]);
-                    } else {
-                        Self::dradf2(ido, l1, ch, c, &wa[iw - 1..]);
+            match ip {
+                4 => {
+                    let ix2 = iw + ido;
+                    let ix3 = ix2 + ido;
+                    unsafe {
+                        if na != 0 {
+                            Self::dradf4(ido, l1, ch, c, &wa[iw - 1..], &wa[ix2 - 1..], &wa[ix3 - 1..]);
+                        } else {
+                            Self::dradf4(ido, l1, c, ch, &wa[iw - 1..], &wa[ix2 - 1..], &wa[ix3 - 1..]);
+                        }
                     }
-                } else {
+                }
+                2 => {
+                    unsafe {
+                        if na == 0 {
+                            Self::dradf2(ido, l1, c, ch, &wa[iw - 1..]);
+                        } else {
+                            Self::dradf2(ido, l1, ch, c, &wa[iw - 1..]);
+                        }
+                    }
+                }
+                _ => {
                     if ido == 1 {
                         na = 1 - na;
                     }
                     unsafe {
                         if na == 0 {
-                            Self::dradfg(ido, ip, l1, idl1, c.as_mut_ptr(), c.as_mut_ptr(), c.as_mut_ptr(), ch.as_mut_ptr(), ch.as_mut_ptr(), &wa[iw - 1..]);
+                            Self::dradfg(ido, ip, l1, idl1, c, c, c, ch, ch, &wa[iw - 1..]);
                             na = 1;
                         } else {
-                            Self::dradfg(ido, ip, l1, idl1, ch.as_mut_ptr(), ch.as_mut_ptr(), ch.as_mut_ptr(), c.as_mut_ptr(), c.as_mut_ptr(), &wa[iw - 1..]);
+                            Self::dradfg(ido, ip, l1, idl1, ch, ch, ch, c, c, &wa[iw - 1..]);
                             na = 0;
                         }
                     }
@@ -682,7 +688,7 @@ impl DrftLookup {
         }
 
         for i in 0..n {
-            c[i] = ch[i];
+            unsafe {deref!(c[i]) = deref!(ch[i])};
         }
     }
 

@@ -8,6 +8,8 @@ mod floor;
 mod mapping;
 mod residue;
 mod psy;
+mod bitrate;
+
 mod mdct;
 
 pub use utils::*;

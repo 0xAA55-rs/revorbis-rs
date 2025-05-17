@@ -10,12 +10,14 @@ use codebook::CodeBooks;
 use floor::VorbisFloor;
 use mapping::VorbisMapping;
 use residue::VorbisResidue;
+use psy::{VorbisPsy, VorbisPsyGlobal};
 use mdct::MdctLookup;
 
 const SHOW_DEBUG: bool = false;
 const DEBUG_ON_READ_BITS: bool = false;
 const DEBUG_ON_WRITE_BITS: bool = false;
 const PANIC_ON_ERROR: bool = false;
+pub const PACKETBLOBS: usize = 15;
 
 /// * The `VorbisIdentificationHeader` is the Vorbis identification header, the first header
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -223,6 +225,10 @@ pub struct VorbisSetupHeader {
 
     /// Modes
     pub modes: Vec<VorbisMode>,
+
+    /// Encode only
+    pub psys: CopiableBuffer<VorbisPsy, 4>,
+    pub psy_g: VorbisPsyGlobal,
 }
 
 impl VorbisSetupHeader {

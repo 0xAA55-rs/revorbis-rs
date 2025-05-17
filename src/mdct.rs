@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::slice::{from_raw_parts, from_raw_parts_mut};
 
 macro_rules! rint {

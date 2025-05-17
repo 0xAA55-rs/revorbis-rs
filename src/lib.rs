@@ -8,6 +8,7 @@ mod floor;
 mod mapping;
 mod residue;
 mod psy;
+mod mdct;
 
 pub use utils::*;
 pub use bitwise::*;

@@ -351,14 +351,26 @@ impl VorbisPackableObject for VorbisSetupHeader {
 /// * The `VorbisInfo` structure
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct VorbisInfo {
-    pub identification: VorbisIdentificationHeader,
+    pub version: i32,
+    pub channels: i32,
+    pub sample_rate: i32,
+    pub bitrate_upper: i32,
+    pub bitrate_nominal: i32,
+    pub bitrate_lower: i32,
+    pub bitrate_window: i32,
     pub codec_setup: VorbisSetupHeader,
 }
 
 impl VorbisInfo {
     pub fn new(identification_header: &VorbisIdentificationHeader, setup_header: &VorbisSetupHeader) -> Self {
         Self {
-            identification: identification_header.clone(),
+            version: identification_header.version,
+            channels: identification_header.channels,
+            sample_rate: identification_header.sample_rate,
+            bitrate_upper: identification_header.bitrate_upper,
+            bitrate_nominal: identification_header.bitrate_nominal,
+            bitrate_lower: identification_header.bitrate_lower,
+            bitrate_window: 0,
             codec_setup: setup_header.clone()
         }
     }

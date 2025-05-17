@@ -752,7 +752,7 @@ impl DrftLookup {
         }
     }
 
-    fn dradb3(ido: usize, l1: usize, cc: &mut [f32], ch: &mut [f32], wa1: &[f32], wa2: &[f32]) {
+    unsafe fn dradb3(ido: usize, l1: usize, cc: *const f32, ch: *mut f32, wa1: &[f32], wa2: &[f32]) {
         let taur = -0.5;
         let taui = 3.0_f32.sqrt() * 0.5;
         let t0 = l1 * ido;
@@ -760,15 +760,17 @@ impl DrftLookup {
         let mut t1 = 0;
         let t2 = t0 << 1;
         let mut t3 = ido << 1;
-        let mut t4 = ido + t3;
+        let t4 = ido + t3;
         let mut t5 = 0;
         for _ in 0..l1 {
-            let tr2 = cc[t3 - 1] + cc[t3 - 1];
-            let cr2 = cc[t5] + taur * tr2;
-            ch[t1] = cc[t5] + tr2;
-            let ci3 = taui * (cc[t3] + cc[t3]);
-            ch[t1 + t0] = cr2 - ci3;
-            ch[t1 + t2] = cr2 + ci3;
+            unsafe {
+                let tr2 = deref!(cc[t3 - 1]) + deref!(cc[t3 - 1]);
+                let cr2 = deref!(cc[t5]) + taur * tr2;
+                deref!(ch[t1]) = deref!(cc[t5]) + tr2;
+                let ci3 = taui * (deref!(cc[t3]) + deref!(cc[t3]));
+                deref!(ch[t1 + t0]) = cr2 - ci3;
+                deref!(ch[t1 + t2]) = cr2 + ci3;
+            }
             t1 += ido;
             t3 += t4;
             t5 += t4;
@@ -795,25 +797,29 @@ impl DrftLookup {
                 t8 += 2;
                 t9 += 2;
                 t10 += 2;
-                let tr2 = cc[t5 - 1] + cc[t6 - 1];
-                let cr2 = cc[t7 - 1] + taur * tr2;
-                ch[t8 - 1] = cc[t7 - 1] + tr2;
-                let ti2 = cc[t5] - cc[t6];
-                let ci2 = cc[t7] + taur * ti2;
-                ch[t8] = cc[t7] + ti2;
-                let cr3 = taui * (cc[t5 - 1] - cc[t6 - 1]);
-                let ci3 = taui * (cc[t5] + cc[t6]);
-                let dr2 = cr2 - ci3;
-                let dr3 = cr2 + ci3;
-                let di2 = ci2 + cr3;
-                let di3 = ci2 - cr3;
-                ch[t9 - 1] = wa1[i - 2] * dr2 - wa1[i - 1] * di2;
-                ch[t9 + 0] = wa1[i - 2] * di2 + wa1[i - 1] * dr2;
-                ch[t10 - 1] = wa2[i - 2] * dr3 - wa2[i - 1] * di3;
-                ch[t10 + 0] = wa2[i - 2] * di3 + wa2[i - 1] * dr3;
+                unsafe {
+                    let tr2 = deref!(cc[t5 - 1]) + deref!(cc[t6 - 1]);
+                    let cr2 = deref!(cc[t7 - 1]) + taur * tr2;
+                    deref!(ch[t8 - 1]) = deref!(cc[t7 - 1]) + tr2;
+                    let ti2 = deref!(cc[t5]) - deref!(cc[t6]);
+                    let ci2 = deref!(cc[t7]) + taur * ti2;
+                    deref!(ch[t8]) = deref!(cc[t7]) + ti2;
+                    let cr3 = taui * (deref!(cc[t5 - 1]) - deref!(cc[t6 - 1]));
+                    let ci3 = taui * (deref!(cc[t5 + 0]) + deref!(cc[t6 + 0]));
+                    let dr2 = cr2 - ci3;
+                    let dr3 = cr2 + ci3;
+                    let di2 = ci2 + cr3;
+                    let di3 = ci2 - cr3;
+                    deref!(ch[t9 - 1]) = wa1[i - 2] * dr2 - wa1[i - 1] * di2;
+                    deref!(ch[t9 + 0]) = wa1[i - 2] * di2 + wa1[i - 1] * dr2;
+                    deref!(ch[t10 - 1]) = wa2[i - 2] * dr3 - wa2[i - 1] * di3;
+                    deref!(ch[t10 + 0]) = wa2[i - 2] * di3 + wa2[i - 1] * dr3;
+                }
             }
             t1 += ido;
         }
+    }
+
 
         fn dradb4(ido: usize, l1: usize, cc: &mut [f32], ch: &mut [f32], wa1: &[f32], wa2: &[f32], wa3: &[f32]) {
             

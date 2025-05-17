@@ -692,15 +692,17 @@ impl DrftLookup {
         }
     }
 
-    fn dradb2(ido: usize, l1: usize, cc: &[f32], ch: &mut [f32], wa1: &[f32]) {
+    unsafe fn dradb2(ido: usize, l1: usize, cc: *const f32, ch: *mut f32, wa1: &[f32]) {
         let t0 = l1 * ido;
 
         let mut t1 = 0;
         let mut t2 = 0;
         let t3 = (ido << 1) - 1;
         for _ in 0..l1 {
-            ch[t1] = cc[t2] + cc[t3 + t2];
-            ch[t1 + t0] = cc[t2] - cc[t3 + t2];
+            unsafe {
+                deref!(ch[t1]) = deref!(cc[t2]) + deref!(cc[t3 + t2]);
+                deref!(ch[t1 + t0]) = deref!(cc[t2]) - deref!(cc[t3 + t2]);
+            }
             t1 += ido;
             t2 = t1 << 1;
         }
@@ -720,12 +722,14 @@ impl DrftLookup {
                     t4 += 2;
                     t5 -= 2;
                     t6 += 2;
-                    ch[t3 - 1] = cc[t4 - 1] + cc[t5 - 1];
-                    let tr2 = cc[t4 - 1] - cc[t5 - 1];
-                    ch[t3] = cc[t4] - cc[t5];
-                    let ti2 = cc[t4] + cc[t5];
-                    ch[t6 - 1]=wa1[i - 2] * tr2 - wa1[i - 1] * ti2;
-                    ch[t6] = wa1[i - 2] * ti2 + wa1[i - 1] * tr2;
+                    unsafe {
+                        deref!(ch[t3 - 1]) = deref!(cc[t4 - 1]) + deref!(cc[t5 - 1]);
+                        let tr2 = deref!(cc[t4 - 1]) - deref!(cc[t5 - 1]);
+                        deref!(ch[t3]) = deref!(cc[t4]) - deref!(cc[t5]);
+                        let ti2 = deref!(cc[t4]) + deref!(cc[t5]);
+                        deref!(ch[t6 - 1]) = wa1[i - 2] * tr2 - wa1[i - 1] * ti2;
+                        deref!(ch[t6 + 0]) = wa1[i - 2] * ti2 + wa1[i - 1] * tr2;
+                    }
                 }
                 t1 += ido;
                 t2 = t1 << 1;
@@ -734,16 +738,17 @@ impl DrftLookup {
             if ido & 1 != 0 {
                 return
             };
-        } else {
+        }
 // L105
-            let mut t1 = ido - 1;
-            let mut t2 = ido - 1;
-            for _ in 0..l1 {
-                ch[t1] = cc[t2] + cc[t2];
-                ch[t1 + t0] = -(cc[t2 + 1] + cc[t2 + 1]);
-                t1 += ido;
-                t2 += ido << 1;
+        let mut t1 = ido - 1;
+        let mut t2 = ido - 1;
+        for _ in 0..l1 {
+            unsafe {
+                deref!(ch[t1]) = deref!(cc[t2]) + deref!(cc[t2]);
+                deref!(ch[t1 + t0]) = -(deref!(cc[t2 + 1]) + deref!(cc[t2 + 1]));
             }
+            t1 += ido;
+            t2 += ido << 1;
         }
     }
 

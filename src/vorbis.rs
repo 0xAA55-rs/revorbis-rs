@@ -15,10 +15,6 @@ use envelope::VorbisEnvelopeLookup;
 use mdct::MdctLookup;
 use copiablebuf::CopiableBuffer;
 
-const SHOW_DEBUG: bool = false;
-const DEBUG_ON_READ_BITS: bool = false;
-const DEBUG_ON_WRITE_BITS: bool = false;
-const PANIC_ON_ERROR: bool = false;
 pub const PACKETBLOBS: usize = 15;
 
 /// * The `VorbisIdentificationHeader` is the Vorbis identification header, the first header

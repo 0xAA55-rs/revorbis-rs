@@ -11,6 +11,7 @@ use floor::VorbisFloor;
 use mapping::VorbisMapping;
 use residue::VorbisResidue;
 use psy::{VorbisPsy, VorbisPsyGlobal};
+use envelope::VorbisEnvelopeLookup;
 use mdct::MdctLookup;
 
 const SHOW_DEBUG: bool = false;
@@ -366,6 +367,7 @@ impl VorbisInfo {
 /// * The private part of the `VorbisDspState` for `libvorbis-1.3.7`
 #[derive(Debug, Default, Clone, PartialEq)]
 struct VorbisDspStatePrivate {
+    envelope: Option<VorbisEnvelopeLookup>,
 
 }
 

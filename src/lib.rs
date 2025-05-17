@@ -11,6 +11,7 @@ mod psy;
 mod bitrate;
 
 mod mdct;
+mod drft;
 
 pub use utils::*;
 pub use bitwise::*;

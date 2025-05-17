@@ -925,9 +925,349 @@ impl DrftLookup {
         }
     }
 
+    unsafe fn dradbg(ido: usize, ip: usize, l1: usize, idl1: usize, cc: *const f32, c1: *mut f32, c2: *mut f32, ch: *mut f32, ch2: *mut f32, wa: &[f32]) {
+        const TPI: f32 = std::f32::consts::PI * 2.0;
+        let t0 = l1 * ido;
+        let t10 = ip * ido;
+        let arg = TPI / ip as f32;
+        let dcp = arg.cos();
+        let dsp = arg.sin();
+        let nbd = (ido - 1) >> 1;
+        let ipp2 = ip;
+        let ipph = (ip + 1) >> 1;
 
-        fn dradb4(ido: usize, l1: usize, cc: &mut [f32], ch: &mut [f32], wa1: &[f32], wa2: &[f32], wa3: &[f32]) {
-            
+        if ido >= l1 {
+            let mut t1 = 0;
+            let mut t2 = 0;
+            for _ in 0..l1 {
+                let mut t3 = t1;
+                let mut t4 = t2;
+                for _ in 0..ido {
+                    unsafe {deref!(ch[t3]) = deref!(cc[t4])};
+                    t3 += 1;
+                    t4 += 1;
+                }
+                t1 += ido;
+                t2 += t10;
+            }
+        } else {
+// L103
+            let mut t1 = 0;
+            for _ in 0..ido {
+                let mut t2 = t1;
+                let mut t3 = t1;
+                for _ in 0..l1 {
+                    unsafe {deref!(ch[t2]) = deref!(cc[t3])};
+                    t2 += ido;
+                    t3 += t10;
+                }
+                t1 += 1;
+            }
+        }
+// L106
+        let mut t1 = 0;
+        let mut t2 = ipp2 * t0;
+        let mut t5 = ido << 1;
+        let t7 = t5;
+        for _ in 1..ipph {
+            t1 += t0;
+            t2 -= t0;
+            let mut t3 = t1;
+            let mut t4 = t2;
+            let mut t6 = t5;
+            for _ in 0..l1 {
+                unsafe {
+                    deref!(ch[t3]) = deref!(cc[t6 - 1]) + deref!(cc[t6 - 1]);
+                    deref!(ch[t4]) = deref!(cc[t6 + 0]) + deref!(cc[t6 + 0]);
+                }
+                t3 += ido;
+                t4 += ido;
+                t6 += t10;
+            }
+            t5 += t7;
+        }
+
+        if ido != 1 {
+            if nbd >= l1 {
+                let mut t1 = 0;
+                let mut t2 = ipp2 * t0;
+                let mut t7 = 0;
+                for _ in 1..ipph {
+                    t1 += t0;
+                    t2 -= t0;
+                    let mut t3 = t1;
+                    let mut t4 = t2;
+                    t7 += ido << 1;
+                    let mut t8 = t7;
+                    for _ in 0..l1 {
+                        let mut t5 = t3;
+                        let mut t6 = t4;
+                        let mut t9 = t8;
+                        let mut t11 = t8;
+                        for _ in (2..ido).step_by(2) {
+                            t5 += 2;
+                            t6 += 2;
+                            t9 += 2;
+                            t11 -= 2;
+                            unsafe {
+                                deref!(ch[t5 - 1]) = deref!(cc[t9 - 1]) + deref!(cc[t11 - 1]);
+                                deref!(ch[t6 - 1]) = deref!(cc[t9 - 1]) - deref!(cc[t11 - 1]);
+                                deref!(ch[t5 + 0]) = deref!(cc[t9 + 0]) - deref!(cc[t11 + 0]);
+                                deref!(ch[t6 + 0]) = deref!(cc[t9 + 0]) + deref!(cc[t11 + 0]);
+                            }
+                        }
+                        t3 += ido;
+                        t4 += ido;
+                        t8 += t10;
+                    }
+                }
+            } else {
+// L112
+                let mut t1 = 0;
+                let mut t2 = ipp2 * t0;
+                let mut t7 = 0;
+                for _ in 1..ipph {
+                    t1 += t0;
+                    t2 -= t0;
+                    let mut t3 = t1;
+                    let mut t4 = t2;
+                    t7 += ido << 1;
+                    let mut t8 = t7;
+                    let mut t9 = t7;
+                    for _ in (2..ido).step_by(2) {
+                        t3 += 2;
+                        t4 += 2;
+                        t8 += 2;
+                        t9 -= 2;
+                        let mut t5 = t3;
+                        let mut t6 = t4;
+                        let mut t11 = t8;
+                        let mut t12 = t9;
+                        for _ in 0..l1 {
+                            unsafe {
+                                deref!(ch[t5 - 1]) = deref!(cc[t11 - 1]) + deref!(cc[t12 - 1]);
+                                deref!(ch[t6 - 1]) = deref!(cc[t11 - 1]) - deref!(cc[t12 - 1]);
+                                deref!(ch[t5 + 0]) = deref!(cc[t11 + 0]) - deref!(cc[t12 + 0]);
+                                deref!(ch[t6 + 0]) = deref!(cc[t11 + 0]) + deref!(cc[t12 + 0]);
+                            }
+                            t5 += ido;
+                            t6 += ido;
+                            t11 += t10;
+                            t12 += t10;
+                        }
+                    }
+                }
+            }
+        }
+// L116
+        let mut ar1 = 1.0;
+        let mut ai1 = 0.0;
+        let mut t1 = 0;
+        let mut t2 = ipp2 * idl1;
+        let t9 = t2;
+        let t3 = (ip - 1) * idl1;
+        for _ in 1..ipph {
+            t1 += idl1;
+            t2 -= idl1;
+
+            let ar1h = dcp * ar1 - dsp * ai1;
+            let ai1h = dcp * ai1 + dsp * ar1;
+            ar1 = ar1h;
+            ai1 = ai1h;
+            let mut t4 = t1;
+            let mut t5 = t2;
+            let mut t6 = 0;
+            let mut t7 = idl1;
+            let mut t8 = t3;
+            for _ in 0..idl1 {
+                unsafe {
+                    deref!(c2[t4]) = deref!(ch2[t6]) + ar1 * deref!(ch2[t7]);
+                    deref!(c2[t5]) = ai1 * deref!(ch2[t8]);
+                }
+                t4 += 1;
+                t5 += 1;
+                t6 += 1;
+                t7 += 1;
+                t8 += 1;
+            }
+            let dc2 = ar1;
+            let ds2 = ai1;
+            let mut ar2 = ar1;
+            let mut ai2 = ai1;
+
+            let mut t6 = idl1;
+            let mut t7 = t9 - idl1;
+            for _ in 2..ipph {
+                t6 += idl1;
+                t7 -= idl1;
+                let ar2h = dc2 * ar2 - ds2 * ai2;
+                let ai2h = dc2 * ai2 + ds2 * ar2;
+                ar2 = ar2h;
+                ai2 = ai2h;
+                let mut t4 = t1;
+                let mut t5 = t2;
+                let mut t11 = t6;
+                let mut t12 = t7;
+                for _ in 0..idl1 {
+                    unsafe {
+                        deref!(c2[t4]) += ar2 * deref!(ch2[t11]);
+                        deref!(c2[t5]) += ai2 * deref!(ch2[t12]);
+                    }
+                    t4 += 1;
+                    t5 += 1;
+                    t11 += 1;
+                    t12 += 1;
+                }
+            }
+        }
+
+        let mut t1 = 0;
+        for _ in 1..ipph {
+            t1 += idl1;
+            let mut t2 = t1;
+            for ik in 0..idl1 {
+                unsafe {deref!(ch2[ik]) += deref!(ch2[t2])};
+                t2 += 1;
+            }
+        }
+
+        let mut t1 = 0;
+        let mut t2 = ipp2 * t0;
+        for _ in 1..ipph {
+            t1 += t0;
+            t2 -= t0;
+            let mut t3 = t1;
+            let mut t4 = t2;
+            for _ in 0..l1 {
+                unsafe {
+                    deref!(ch[t3]) = deref!(c1[t3]) - deref!(c1[t4]);
+                    deref!(ch[t4]) = deref!(c1[t3]) + deref!(c1[t4]);
+                }
+                t3 += ido;
+                t4 += ido;
+            }
+        }
+
+        if ido != 1 {
+            if nbd >= l1 {
+                let mut t1 = 0;
+                let mut t2 = ipp2 * t0;
+                for _ in 1..ipph {
+                    t1 += t0;
+                    t2 -= t0;
+                    let mut t3 = t1;
+                    let mut t4 = t2;
+                    for _ in 0..l1 {
+                        let mut t5 = t3;
+                        let mut t6 = t4;
+                        for _ in (2..ido).step_by(2) {
+                            t5 += 2;
+                            t6 += 2;
+                            unsafe {
+                                deref!(ch[t5 - 1]) = deref!(c1[t5 - 1]) - deref!(c1[t6 + 0]);
+                                deref!(ch[t6 - 1]) = deref!(c1[t5 - 1]) + deref!(c1[t6 + 0]);
+                                deref!(ch[t5 + 0]) = deref!(c1[t5 + 0]) + deref!(c1[t6 - 1]);
+                                deref!(ch[t6 + 0]) = deref!(c1[t5 + 0]) - deref!(c1[t6 - 1]);
+                            }
+                        }
+                        t3 += ido;
+                        t4 += ido;
+                    }
+                }
+            } else {
+// L128
+                let mut t1 = 0;
+                let mut t2 = ipp2 * t0;
+                for _ in 1..ipph {
+                    t1 += t0;
+                    t2 -= t0;
+                    let mut t3 = t1;
+                    let mut t4 = t2;
+                    for _ in (2..ido).step_by(2) {
+                        t3 += 2;
+                        t4 += 2;
+                        let mut t5 = t3;
+                        let mut t6 = t4;
+                        for _ in 0..l1 {
+                            unsafe {
+                                deref!(ch[t5 - 1]) = deref!(c1[t5 - 1]) - deref!(c1[t6 + 0]);
+                                deref!(ch[t6 - 1]) = deref!(c1[t5 - 1]) + deref!(c1[t6 + 0]);
+                                deref!(ch[t5 + 0]) = deref!(c1[t5 + 0]) + deref!(c1[t6 - 1]);
+                                deref!(ch[t6 + 0]) = deref!(c1[t5 + 0]) - deref!(c1[t6 - 1]);
+                            }
+                            t5 += ido;
+                            t6 += ido;
+                        }
+                    }
+                }
+            }
+        }
+// L132
+        if ido == 1 {
+            return;
+        }
+
+        for ik in 0..idl1 {
+            unsafe {deref!(c2[ik]) = deref!(ch2[ik])};
+        }
+
+        let mut t1 = 0;
+        for _ in 1..ip {
+            t1 += t0;
+            let mut t2 = t1;
+            for _ in 0..l1 {
+                unsafe {deref!(c1[t2]) = deref!(ch[t2])};
+                t2 += ido;
+            }
+        }
+
+        if nbd <= 11 {
+            let mut is = 0usize.wrapping_sub(ido) - 1;
+            let mut t1 = 0;
+            for _ in 1..ip {
+                is = is.wrapping_add(ido);
+                t1 += t0;
+                let mut idij = is;
+                let mut t2 = t1;
+                for _ in (2..ido).step_by(2) {
+                    t2 += 2;
+                    idij += 2;
+                    let mut t3 = t2;
+                    for _ in 0..l1 {
+                        unsafe {
+                            deref!(c1[t3 - 1]) = wa[idij - 1] * deref!(ch[t3 - 1]) - wa[idij] * deref!(ch[t3 + 0]);
+                            deref!(c1[t3 + 0]) = wa[idij - 1] * deref!(ch[t3 + 0]) + wa[idij] * deref!(ch[t3 - 1]);
+                        }
+                        t3 += ido;
+                    }
+                }
+            }
+            return;
+        } else {
+// L139
+            let mut is = 0usize.wrapping_sub(ido) - 1;
+            let mut t1 = 0;
+            for _ in 1..ip {
+                is = is.wrapping_add(ido);
+                t1 += t0;
+                let mut t2 = t1;
+                for _ in 0..l1 {
+                    let mut idij = is;
+                    let mut t3 = t2;
+                    for _ in (2..ido).step_by(2) {
+                        idij += 2;
+                        t3 += 2;
+                        unsafe {
+                            deref!(c1[t3 - 1]) = wa[idij - 1] * deref!(ch[t3 - 1]) - wa[idij] * deref!(ch[t3 + 1]);
+                            deref!(c1[t3 + 1]) = wa[idij - 1] * deref!(ch[t3 + 1]) + wa[idij] * deref!(ch[t3 - 1]);
+                        }
+                    }
+                    t2 += ido;
+                }
+            }
+        }
+    }
+
         }
     }
 

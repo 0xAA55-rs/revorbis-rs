@@ -791,3 +791,17 @@ impl DrftLookup {
         ret
     }
 
+    pub fn forward(&mut self, data: &mut [f32]) {
+        if self.n == 1 {
+            return;
+        }
+        unsafe {Self::drftf1(self.n, data.as_mut_ptr(), self.trigcache.as_mut_ptr(), &self.trigcache[self.n..], &self.splitcache)};
+    }
+
+    pub fn backward(&mut self, data: &mut [f32]) {
+        if self.n == 1 {
+            return;
+        }
+        unsafe {Self::drftb1(self.n, data.as_mut_ptr(), self.trigcache.as_mut_ptr(), &self.trigcache[self.n..], &self.splitcache)};
+    }
+}

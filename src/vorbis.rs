@@ -13,6 +13,7 @@ use residue::VorbisResidue;
 use psy::{VorbisPsy, VorbisPsyGlobal};
 use envelope::VorbisEnvelopeLookup;
 use mdct::MdctLookup;
+use copiablebuf::CopiableBuffer;
 
 const SHOW_DEBUG: bool = false;
 const DEBUG_ON_READ_BITS: bool = false;
@@ -380,6 +381,8 @@ impl VorbisInfo {
 #[derive(Debug, Default, Clone, PartialEq)]
 struct VorbisDspStatePrivate {
     envelope: Option<VorbisEnvelopeLookup>,
+    window: [i32; 2],
+    transform: [MdctLookup; 2],
 
 }
 
@@ -391,12 +394,36 @@ pub struct VorbisDspState {
     backend_state: VorbisDspStatePrivate,
 }
 
+#[derive(Default, Debug, Clone, PartialEq)]
+struct VorbisBlockInternal {
+    pcmdelay: Vec<Vec<f32>>,
+    ampmax: f32,
+    blocktype: i32,
 }
 
+/// Necessary stream state for linking to the framing abstraction
+#[derive(Default, Debug, Clone, PartialEq)]
+pub struct VorbisBlock {
+    pcm: Vec<Vec<f32>>,
 
+    lw: i32,
+    w: i32,
+    nw: i32,
+    pcmend: i32,
+    mode: i32,
 
+    eofflag: bool,
+    granulepos: i64,
+    sequence: i64,
 
+    /// For read-only access of configuration
+    vorbis_dsp_state: VorbisDspState,
 
+    glue_bits: i32,
+    time_bits: i32,
+    floor_bits: i32,
+    res_bits: i32,
 
+    internal: VorbisBlockInternal,
 }
 

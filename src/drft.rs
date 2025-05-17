@@ -820,6 +820,111 @@ impl DrftLookup {
         }
     }
 
+    unsafe fn dradb4(ido: usize, l1: usize, cc: *const f32, ch: *mut f32, wa1: &[f32], wa2: &[f32], wa3: &[f32]) {
+        let sqrt2 = 2.0_f32.sqrt();
+        let t0 = l1 * ido;
+
+        let mut t1 = 0;
+        let t2 = ido << 2;
+        let mut t3 = 0;
+        let t6 = ido << 1;
+        for _ in 0..l1 {
+            let mut t4 = t3 + t6;
+            let mut t5 = t1;
+            unsafe {
+                let tr3 = deref!(cc[t4 - 1]) + deref!(cc[t4 - 1]);
+                let tr4 = deref!(cc[t4 + 0]) + deref!(cc[t4 + 0]);
+                t4 += t6;
+                let tr1 = deref!(cc[t3]) - deref!(cc[t4 - 1]);
+                let tr2 = deref!(cc[t3]) + deref!(cc[t4 - 1]);
+                deref!(ch[t5]) = tr2 + tr3; t5 += t0;
+                deref!(ch[t5]) = tr1 - tr4; t5 += t0;
+                deref!(ch[t5]) = tr2 - tr3; t5 += t0;
+                deref!(ch[t5]) = tr1 + tr4;
+            }
+            t1 += ido;
+            t3 += t2;
+        }
+
+        if ido < 2 {
+            return;
+        } else if ido != 2 {
+            let mut t1 = 0;
+            for _ in 0..l1 {
+                let mut t2 = t1 << 2;
+                let mut t3 = t2 + t6;
+                let mut t4 = t3;
+                let mut t5 = t4 + t6;
+                let mut t7 = t1;
+                for i in (2..ido).step_by(2) {
+                    t2 += 2;
+                    t3 += 2;
+                    t4 -= 2;
+                    t5 -= 2;
+                    t7 += 2;
+                    unsafe {
+                        let ti1 = deref!(cc[t2 + 0]) + deref!(cc[t5 + 0]);
+                        let ti2 = deref!(cc[t2 + 0]) - deref!(cc[t5 + 0]);
+                        let ti3 = deref!(cc[t3 + 0]) - deref!(cc[t4 + 0]);
+                        let tr4 = deref!(cc[t3 + 0]) + deref!(cc[t4 + 0]);
+                        let tr1 = deref!(cc[t2 - 1]) - deref!(cc[t5 - 1]);
+                        let tr2 = deref!(cc[t2 - 1]) + deref!(cc[t5 - 1]);
+                        let ti4 = deref!(cc[t3 - 1]) - deref!(cc[t4 - 1]);
+                        let tr3 = deref!(cc[t3 - 1]) + deref!(cc[t4 - 1]);
+                        deref!(ch[t7 - 1]) = tr2 + tr3;
+                        let cr3 = tr2 - tr3;
+                        deref!(ch[t7]) = ti2 + ti3;
+                        let ci3 = ti2 - ti3;
+                        let cr2 = tr1 - tr4;
+                        let cr4 = tr1 + tr4;
+                        let ci2 = ti1 + ti4;
+                        let ci4 = ti1 - ti4;
+
+                        let mut t8 = t7 + t0;
+                        deref!(ch[t8 - 1]) = wa1[i - 2] * cr2 - wa1[i - 1] * ci2;
+                        deref!(ch[t8 + 0]) = wa1[i - 2] * ci2 + wa1[i - 1] * cr2;
+                        t8 += t0;
+                        deref!(ch[t8 - 1]) = wa2[i - 2] * cr3 - wa2[i - 1] * ci3;
+                        deref!(ch[t8 + 0]) = wa2[i - 2] * ci3 + wa2[i - 1] * cr3;
+                        t8 += t0;
+                        deref!(ch[t8 - 1]) = wa3[i - 2] * cr4 - wa3[i - 1] * ci4;
+                        deref!(ch[t8 + 0]) = wa3[i - 2] * ci4 + wa3[i - 1] * cr4;
+                    }
+                }
+                t1 += ido;
+            }
+
+            if ido & 1 != 0 {
+                return;
+            }
+        }
+// L105
+        let mut t1 = ido;
+        let t2 = ido << 2;
+        let mut t3 = ido - 1;
+        let mut t4 = ido + (ido << 1);
+        for _ in 0..l1 {
+            let mut t5 = t3;
+            unsafe {
+                let ti1 = deref!(cc[t1 + 0]) + deref!(cc[t4 + 0]);
+                let ti2 = deref!(cc[t4 + 0]) - deref!(cc[t1 + 0]);
+                let tr1 = deref!(cc[t1 - 1]) - deref!(cc[t4 - 1]);
+                let tr2 = deref!(cc[t1 - 1]) + deref!(cc[t4 - 1]);
+                deref!(ch[t5]) = tr2 + tr2;
+                t5 += t0;
+                deref!(ch[t5]) =  sqrt2 * (tr1 - ti1);
+                t5 += t0;
+                deref!(ch[t5]) = ti2 + ti2;
+                t5 += t0;
+                deref!(ch[t5]) = -sqrt2 * (tr1 + ti1);
+            }
+
+            t3 += ido;
+            t1 += t2;
+            t4 += t2;
+        }
+    }
+
 
         fn dradb4(ido: usize, l1: usize, cc: &mut [f32], ch: &mut [f32], wa1: &[f32], wa2: &[f32], wa3: &[f32]) {
             

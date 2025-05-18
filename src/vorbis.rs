@@ -378,6 +378,7 @@ pub struct VorbisInfo {
     pub bitrate_nominal: i32,
     pub bitrate_lower: i32,
     pub bitrate_window: i32,
+    pub block_size: [i32; 2],
     pub codec_setup: VorbisSetupHeader,
 }
 
@@ -391,6 +392,7 @@ impl VorbisInfo {
             bitrate_nominal: identification_header.bitrate_nominal,
             bitrate_lower: identification_header.bitrate_lower,
             bitrate_window: 0,
+            block_size: identification_header.block_size,
             codec_setup: setup_header.clone()
         }
     }

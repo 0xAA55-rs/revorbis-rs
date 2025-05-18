@@ -8,6 +8,108 @@ use std::{
 use crate::*;
 use io_utils::CursorVecU8;
 
+fn bitreverse(mut x: u32) -> u32 {
+    x = ((x >> 16) & 0x0000ffff) | ((x << 16) & 0xffff0000);
+    x = ((x >>  8) & 0x00ff00ff) | ((x <<  8) & 0xff00ff00);
+    x = ((x >>  4) & 0x0f0f0f0f) | ((x <<  4) & 0xf0f0f0f0);
+    x = ((x >>  2) & 0x33333333) | ((x <<  2) & 0xcccccccc);
+    x = ((x >>  1) & 0x55555555) | ((x <<  1) & 0xaaaaaaaa);
+    x
+}
+
+fn make_words(lengthlist: &[i8], n: i32, sparsecount: i32) -> Result<Vec<u32>, io::Error> {
+    let mut count = 0usize;
+    let n = n as usize;
+    let sparsecount = sparsecount as usize;
+    let mut marker = [0u32; 33];
+    let mut ret = vec![0u32; if sparsecount != 0 {sparsecount} else {n}];
+
+    for i in 0..n {
+        let length = lengthlist[i] as usize;
+        if length > 0 {
+            let mut entry = marker[length];
+            /* when we claim a node for an entry, we also claim the nodes
+               below it (pruning off the imagined tree that may have dangled
+               from it) as well as blocking the use of any nodes directly
+               above for leaves */
+
+            /* update ourself */
+            if length < 32 && (entry >> length) != 0 {
+                /* error condition; the lengths must specify an overpopulated tree */
+                return_Err!(io::Error::new(io::ErrorKind::InvalidData, format!("The lengths must specify an overpopulated tree. Length: {length}")));
+            }
+
+            ret[count] = entry;
+            count += 1;
+
+            /* Look to see if the next shorter marker points to the node
+               above. if so, update it and repeat.  */
+            for j in (1..length + 1).rev() {
+                if marker[j] & 1 != 0 {
+                    if j == 1 {
+                        marker[1] += 1;
+                    } else {
+                        marker[j] = marker[j - 1] << 1;
+                    }
+                    break; /* invariant says next upper marker would already
+                              have been moved if it was on the same path */
+                }
+                marker[j] += 1;
+            }
+
+            /* prune the tree; the implicit invariant says all the longer
+               markers were dangling from our just-taken node.  Dangle them
+               from our *new* node. */
+            for j in (length + 1)..33 {
+                if marker[j] >> 1 == entry {
+                    entry = marker[j];
+                    marker[j] = marker[j - 1] << 1;
+                } else {
+                    break;
+                }
+            }
+        } else {
+            if sparsecount == 0 {
+                count += 1;
+            }
+        }
+    }
+    /* any underpopulated tree must be rejected. */
+    /* Single-entry codebooks are a retconned extension to the spec.
+       They have a single codeword '0' of length 1 that results in an
+       underpopulated tree. Shield that case from the underformed tree check. */
+    if !(count == 1 && marker[2] == 2) {
+        for i in 1..33 {
+            if (marker[i] & (0xffffffff >> (32 - i))) != 0 {
+                return_Err!(io::Error::new(io::ErrorKind::InvalidData, format!("Underpopulated tree. `marker[i]`: {}", marker[i])));
+            }
+        }
+    }
+
+    /* bitreverse the words because our bitwise packer/unpacker is LSb
+       endian */
+    count = 0;
+    for i in 0..n {
+        let mut temp = 0u32;
+        for j in 0..lengthlist[i] as usize {
+            temp <<= 1;
+            temp |= (ret[count] >> j) & 1;
+        }
+
+        if sparsecount != 0 {
+            if lengthlist[i] != 0 {
+                ret[count] = temp;
+                count += 1;
+            }
+        } else {
+            ret[count] = temp;
+            count += 1;
+        }
+    }
+
+    Ok(ret)
+}
+
 /// * This is the parsed Vorbis codebook, it's used to quantify the audio samples.
 /// * This is the re-invented wheel. For this piece of code, this thing is only used to parse the binary form of the codebooks.
 /// * And then I can sum up how many **bits** were used to store the codebooks.
@@ -137,8 +239,8 @@ impl StaticCodeBook {
 
     /// there might be a straightforward one-line way to do the below
     /// that's portable and totally safe against roundoff, but I haven't
-    /// thought of it.  Therefore, we opt on the side of caution
-    fn book_maptype1_quantvals(&self) -> i32 {
+    /// thought of it. Therefore, we opt on the side of caution
+    pub fn book_maptype1_quantvals(&self) -> i32 {
         if self.entries < 1 {
             return 0;
         }
@@ -173,6 +275,67 @@ impl StaticCodeBook {
                 vals -= 1;
             } else {
                 vals += 1;
+            }
+        }
+    }
+
+    /// * unpack the quantized list of values for encode/decode.
+    /// * we need to deal with two map types: in map type 1, the values are
+    ///   generated algorithmically (each column of the vector counts through
+    ///   the values in the quant vector). in map type 2, all the values came
+    ///   in in an explicit list. Both value lists must be unpacked.
+    pub fn book_unquantize(&self, n: usize, sparsemap: Option<&[u32]>) -> Result<Vec<f32>, io::Error> {
+        let mut ret = vec![0.0; n * self.dim as usize];
+        let mut count = 0usize;
+        /* maptype 1 and 2 both use a quantized value vector, but
+           different sizes */
+        match self.maptype {
+            1 => {
+                let quantvals = self.book_maptype1_quantvals() as usize;
+                for j in 0..self.entries as usize {
+                    if sparsemap.is_some() && self.lengthlist[j] != 0 || sparsemap.is_none() {
+                        let mut last = 0.0;
+                        let mut indexdiv = 1;
+                        for k in 0..self.dim as usize {
+                            let index = (j / indexdiv) % quantvals;
+                            let val = (self.quantlist[index] as f32).abs() * self.q_delta + self.q_min + last;
+                            if self.q_sequencep {
+                                last = val;
+                            }
+                            if let Some(sparsemap) = sparsemap {
+                                ret[sparsemap[count] as usize * self.dim as usize + k] = val;
+                            } else {
+                                ret[count * self.dim as usize + k] = val;
+                            }
+                            indexdiv *= quantvals;
+                        }
+                        count += 1;
+                    }
+                }
+                Ok(ret)
+            }
+            2 => {
+                for j in 0..self.entries as usize {
+                    if sparsemap.is_some() && self.lengthlist[j] != 0 || sparsemap.is_none() {
+                        let mut last = 0.0;
+                        for k in 0..self.dim as usize {
+                            let val = (self.quantlist[j * self.dim as usize + k] as f32).abs() * self.q_delta + self.q_min + last;
+                            if self.q_sequencep {
+                                last = val;
+                            }
+                            if let Some(sparsemap) = sparsemap {
+                                ret[sparsemap[count] as usize * self.dim as usize + k] = val;
+                            } else {
+                                ret[count * self.dim as usize + k] = val;
+                            }
+                        }
+                        count += 1;
+                    }
+                }
+                Ok(ret)
+            }
+            o => {
+                return_Err!(io::Error::new(io::ErrorKind::InvalidInput, format!("Bad map type: {o}")));
             }
         }
     }
@@ -512,6 +675,153 @@ pub struct CodeBook {
     pub delta: f32,
 }
 
+impl CodeBook {
+    pub fn new_for_encode(src: &StaticCodeBook) -> Result<Self, io::Error> {
+        Ok(Self {
+            dim: src.dim,
+            entries: src.entries,
+            used_entries: src.entries,
+            static_codebook: Some(src.clone()),
+            code_list: make_words(&src.lengthlist, src.entries, 0)?,
+            quantvals: src.book_maptype1_quantvals(),
+            minval: src.q_min,
+            delta: src.q_delta,
+            ..Default::default()
+        })
+    }
+
+    /// Decode codebook arrangement is more heavily optimized than encode
+    pub fn new_for_decode(src: &StaticCodeBook) -> Result<Self, io::Error> {
+        /* count actually used entries and find max length */
+        let mut n = 0usize;
+        let used_entries = src.entries;
+        for i in 0..src.entries as usize {
+            if src.lengthlist[i] > 0 {
+                n += 1;
+            }
+        }
+
+        if n == 0 {
+            Ok(Self {
+                dim: src.dim,
+                entries: src.entries,
+                used_entries,
+                ..Default::default()
+            })
+        } else {
+            /* two different remappings go on here.
+
+            First, we collapse the likely sparse codebook down only to
+            actually represented values/words.  This collapsing needs to be
+            indexed as map-valueless books are used to encode original entry
+            positions as integers.
+
+            Second, we reorder all vectors, including the entry index above,
+            by sorted bitreversed codeword to allow treeless decode. */
+
+            /* perform sort */
+            let mut codes = make_words(&src.lengthlist, src.entries, used_entries)?;
+            let mut codes_r = Vec::<&u32>::with_capacity(n);
+
+            for i in 0..n {
+                codes[i] = bitreverse(codes[i]);
+            }
+            for i in 0..n {
+                codes_r.push(&codes[i]);
+            }
+
+            codes_r.sort_by(|a, b|((a > b) as i32).cmp(&((a < b) as i32)));
+
+            let mut sortindex = Vec::<u32>::with_capacity(n);
+            let mut code_list = Vec::<u32>::with_capacity(n);
+
+            // the index is a reverse index
+            for i in 0..n {
+                let position = unsafe{(codes_r[i] as *const u32).offset_from(codes.as_ptr())} as usize;
+                sortindex[position] = i as u32;
+            }
+
+            for i in 0..n {
+                code_list[sortindex[i] as usize] = codes[i];
+            }
+            let value_list = src.book_unquantize(n, Some(&sortindex))?;
+
+            let mut dec_index = vec![0; n];
+            n = 0;
+            for i in 0..src.entries as usize {
+                if src.lengthlist[i] > 0 {
+                    dec_index[sortindex[n] as usize] = i as i32;
+                    n += 1;
+                }
+            }
+
+            let mut dec_codelengths = vec![0; n];
+            n = 0;
+            for i in 0..src.entries as usize {
+                if src.lengthlist[i] > 0 {
+                    dec_codelengths[sortindex[n] as usize] = src.lengthlist[i];
+                    n += 1;
+                }
+            }
+            let dec_maxlength: i8 = src.lengthlist.iter().copied().max().unwrap();
+
+            let mut dec_firsttablen;
+            let mut dec_firsttable;
+            if n == 1 && dec_maxlength == 1 {
+                dec_firsttablen = 1;
+                dec_firsttable = vec![1, 1];
+            } else {
+                dec_firsttablen = ilog!(used_entries) - 4; // this is magic
+                dec_firsttablen = dec_firsttablen.clamp(5, 8);
+                let tabn = 1 << dec_firsttablen;
+                dec_firsttable = vec![0; tabn];
+
+                for i in 0..n {
+                    if dec_codelengths[i] <= dec_firsttablen {
+                        let orig = bitreverse(code_list[i]) as usize;
+                        for j in 0..1 << (dec_firsttablen - dec_codelengths[i]) {
+                            dec_firsttable[orig | (j << dec_codelengths[i])] = (i + 1) as u32;
+                        }
+                    }
+                }
+                /* now fill in 'unused' entries in the firsttable with hi/lo search
+                   hints for the non-direct-hits */
+                let mask = 0xFFFFFFFEu32 << (31 - dec_firsttablen);
+                let mut lo = 0;
+                let mut hi = 0;
+                for _ in 0..tabn {
+                    let word = (1 << (32 - dec_firsttablen)) as u32;
+                    if dec_firsttable[bitreverse(word) as usize] == 0 {
+                        while lo + 1 < n && code_list[lo + 1] < word {
+                            lo += 1;
+                        }
+                        while hi < n && word >= (code_list[hi] & mask) {
+                            hi += 1;
+                        }
+
+                        let loval = (lo).clamp(0, 0x7FFF) as u32;
+                        let hival = (n - hi).clamp(0, 0x7FFF) as u32;
+                        dec_firsttable[bitreverse(word) as usize] = 0x80000000u32 | (loval << 15)  | hival;
+                    }
+                }
+            }
+
+            Ok(Self {
+                dim: src.dim,
+                entries: src.entries,
+                used_entries,
+                value_list,
+                code_list,
+                dec_index,
+                dec_codelengths,
+                dec_firsttablen,
+                dec_firsttable,
+                dec_maxlength,
+                ..Default::default()
+            })
+        }
+    }
+}
 
 impl Debug for CodeBook {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {

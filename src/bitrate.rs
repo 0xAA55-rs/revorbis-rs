@@ -1,7 +1,7 @@
 use crate::*;
 use vorbis::*;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct VorbisBitrateManagerState<'a> {
 	managed: i32,
 

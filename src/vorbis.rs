@@ -444,9 +444,6 @@ impl VorbisDspStatePrivate{
                 DrftLookup::new(block_size[0]),
                 DrftLookup::new(block_size[1]),
             ];
-
-        } else {
-
         }
 
         Ok(ret)

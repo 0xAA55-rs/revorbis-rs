@@ -26,7 +26,7 @@ pub struct StaticCodeBook {
     pub quantlist: Vec<i32>,
 }
 
-impl Debug for CodeBook {
+impl Debug for StaticCodeBook {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("StaticCodeBook")
         .field("dim", &self.dim)

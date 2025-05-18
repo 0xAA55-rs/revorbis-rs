@@ -250,6 +250,9 @@ impl VorbisSetupHeader {
 
             // time backend settings; hooks are unused
             let times = read_bits!(bitreader, 6).wrapping_add(1);
+            if times == 0 {
+                return_Err!(io::Error::new(io::ErrorKind::InvalidData, "No time backend settings.".to_string()));
+            }
             for _ in 0..times {
                 let time_type = read_bits!(bitreader, 16);
                 if time_type != 0 {

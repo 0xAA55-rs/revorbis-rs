@@ -13,16 +13,3 @@ I've tried to re-encapsulate the naked Vorbis file using `Ogg`, but then I found
 2. The granule position for each Vorbis packet.
 
 So I'm now re-inventing the Vorbis wheel in Rust.
-
-Currently I've done parsing the Vorbis headers:
-
-```rust
-#[derive(Debug, Default, Clone, PartialEq)]
-pub struct VorbisSetupHeader {
-    pub static_codebooks: StaticCodeBooks,
-    pub floors: Vec<VorbisFloor>,
-    pub residues: Vec<VorbisResidue>,
-    pub maps: Vec<VorbisMapping>,
-    pub modes: Vec<VorbisMode>,
-}
-```

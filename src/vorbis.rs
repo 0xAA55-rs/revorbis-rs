@@ -346,7 +346,7 @@ impl VorbisSetupHeader {
         // maps
         write_bits!(bitwriter, self.maps.len().wrapping_sub(1), 6);
         for map in self.maps.iter() {
-            map.pack(bitwriter)?;
+            map.pack(bitwriter, ident_header.channels)?;
         }
 
         // modes

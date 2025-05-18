@@ -227,6 +227,8 @@ pub struct VorbisSetupHeader {
     /// Encode only
     pub psys: CopiableBuffer<VorbisPsy, 4>,
     pub psy_g: VorbisPsyGlobal,
+
+    pub halfrate_flag: bool,
 }
 
 impl VorbisSetupHeader {

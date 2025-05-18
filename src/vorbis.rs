@@ -458,6 +458,7 @@ impl VorbisDspStatePrivate{
 pub struct VorbisDspState {
     pub info: VorbisInfo,
     backend_state: VorbisDspStatePrivate,
+    for_encode: bool,
 }
 
 #[derive(Default, Debug, Clone, PartialEq)]

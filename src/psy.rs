@@ -285,3 +285,61 @@ fn setup_tone_curves(
     ret
 }
 
+
+#[derive(Clone, PartialEq)]
+#[allow(non_snake_case)]
+pub struct VorbisLookPsy<'a> {
+    n: usize,
+    vorbis_info_phy: &'a VorbisInfoPsy,
+
+    tonecurves: Vec<Vec<Vec<f32>>>,
+    noiseoffset: Vec<Vec<f32>>,
+
+    ath: Vec<f32>,
+
+    /// in n.ocshift format
+    octave: Vec<i32>,
+    bark: Vec<i32>,
+
+    firstoc: i32,
+    shiftoc: i32,
+    eighth_octave_lines: i32,
+    total_octave_lines: i32,
+    rate: i32,
+
+    /// Masking compensation value
+    m_val: f32,
+}
+
+impl<'a> VorbisLookPsy<'a> {
+    pub fn new(
+        vorbis_info_phy: &'a VorbisInfoPsy,
+        vorbis_info_psy_global: &VorbisInfoPsyGlobal,
+        n: usize,
+        rate: u32,
+    ) -> Self {
+        Self {
+            
+        }
+    }
+}
+
+impl Debug for VorbisLookPsy<'_> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("VorbisLookPsy")
+        .field("n", &self.n)
+        .field("vorbis_info_phy", &self.vorbis_info_phy)
+        .field("tonecurves", &NestVecFormatter::new_level2(&self.tonecurves))
+        .field("noiseoffset", &NestVecFormatter::new_level1(&self.noiseoffset))
+        .field("ath", &NestVecFormatter::new(&self.ath))
+        .field("octave", &NestVecFormatter::new(&self.octave))
+        .field("bark", &NestVecFormatter::new(&self.bark))
+        .field("firstoc", &self.firstoc)
+        .field("shiftoc", &self.shiftoc)
+        .field("eighth_octave_lines", &self.eighth_octave_lines)
+        .field("total_octave_lines", &self.total_octave_lines)
+        .field("rate", &self.rate)
+        .field("m_val", &self.m_val)
+        .finish()
+    }
+}

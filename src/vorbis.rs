@@ -438,7 +438,7 @@ impl VorbisDspStatePrivate{
             ..Default::default()
         };
 
-        info.init_codebooks(for_encode)?;
+        info.codec_setup.init_codebooks(for_encode)?;
         if for_encode {
             ret.fft_look = [
                 DrftLookup::new(block_size[0]),

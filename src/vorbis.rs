@@ -10,7 +10,7 @@ use codebook::{StaticCodeBook, CodeBook};
 use floor::VorbisFloor;
 use mapping::VorbisMapping;
 use residue::VorbisResidue;
-use psy::{VorbisPsy, VorbisPsyGlobal};
+use psy::{VorbisInfoPsy, VorbisInfoPsyGlobal, VorbisLookPsy};
 use envelope::VorbisEnvelopeLookup;
 use mdct::MdctLookup;
 use drft::DrftLookup;
@@ -229,8 +229,8 @@ pub struct VorbisSetupHeader {
     pub codebooks: Vec<CodeBook>,
 
     /// Encode only
-    pub psys: CopiableBuffer<VorbisPsy, 4>,
-    pub psy_g: VorbisPsyGlobal,
+    pub psys: CopiableBuffer<VorbisInfoPsy, 4>,
+    pub psy_g: VorbisInfoPsyGlobal,
 
     pub halfrate_flag: bool,
 }

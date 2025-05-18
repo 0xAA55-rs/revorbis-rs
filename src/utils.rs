@@ -1,4 +1,7 @@
-use std::{io::{self, Write}};
+use std::{
+    io,
+    fmt::{self, Debug, Display, Formatter},
+};
 
 use crate::*;
 use bitwise::*;
@@ -33,6 +36,52 @@ macro_rules! format_array {
     ($data:expr, $delims:expr, $($arg:tt)*) => {
         $data.iter().map(|&v|format!($($arg)*, v)).collect::<Vec<_>>().join($delims)
     };
+}
+
+pub struct NestVecFormatter<'a, T>
+where
+    T: Display + Copy {
+    vec: &'a Vec<T>,
+}
+
+impl<'a, T> NestVecFormatter<'a, T>
+where
+    T: Display + Copy {
+    pub fn new(vec: &'a Vec<T>) -> Self {
+        Self {
+            vec,
+        }
+    }
+
+    pub fn new_level1(vec: &'a Vec<Vec<T>>) -> Vec<Self> {
+        let mut ret = Vec::with_capacity(vec.len());
+        for v in vec.iter() {
+            ret.push(Self::new(&v))
+        }
+        ret
+    }
+
+    pub fn new_level2(vec: &'a Vec<Vec<Vec<T>>>) -> Vec<Vec<Self>> {
+        let mut ret = Vec::with_capacity(vec.len());
+        for v in vec.iter() {
+            let mut new_v = Vec::with_capacity(v.len());
+            for v in v.iter() {
+                new_v.push(Self::new(&v))
+            }
+            ret.push(new_v)
+        }
+        ret
+    }
+}
+
+impl<T> Debug for NestVecFormatter<'_, T>
+where
+    T: Display + Copy {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_list()
+        .entries(&[format_args!("[{}]", format_array!(&self.vec))])
+        .finish()
+    }
 }
 
 #[macro_export]

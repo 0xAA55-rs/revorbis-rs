@@ -1,8 +1,8 @@
 use crate::*;
 use vorbis::*;
 
-#[derive(Debug, Default, Clone, PartialEq)]
-pub struct VorbisBitrateManagerState {
+#[derive(Debug, Clone, PartialEq)]
+pub struct VorbisBitrateManagerState<'a> {
 	managed: i32,
 
 	avg_reservoir: i32,
@@ -14,7 +14,7 @@ pub struct VorbisBitrateManagerState {
 	short_per_long: i32,
 	avgfloat: f64,
 
-	vb: VorbisBlock,
+	vorbis_block: &'a VorbisBlock<'a>,
 	choice: i32,
 }
 

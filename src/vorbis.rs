@@ -466,7 +466,7 @@ struct VorbisBlockInternal {
 }
 
 /// Necessary stream state for linking to the framing abstraction
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct VorbisBlock<'a> {
     pcm: Vec<Vec<f32>>,
 

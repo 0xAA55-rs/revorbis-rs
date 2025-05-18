@@ -199,12 +199,12 @@ pub fn remove_codebook_from_setup_header(setup_header: &[u8]) -> Result<Vec<u8>,
     assert_eq!(&setup_header[0..7], b"\x05vorbis", "Checking the vorbis header that is a `setup_header` or not");
 
     // Let's find the book, and kill it.
-    let codebooks = CodeBooks::load_from_slice(&setup_header[7..]).unwrap();
+    let codebooks = StaticCodeBooks::load_from_slice(&setup_header[7..]).unwrap();
     let bytes_before_codebook = BitwiseData::from_bytes(&setup_header[0..7]);
     let (_codebook_bits, bits_after_codebook) = BitwiseData::new(&setup_header[7..], (setup_header.len() - 7) * 8).split(codebooks.total_bits);
 
     // Let's generate the empty codebook.
-    let _empty_codebooks = CodeBooks::default().to_packed_codebooks().unwrap().books;
+    let _empty_codebooks = StaticCodeBooks::default().to_packed_codebooks().unwrap().books;
 
     let mut setup_header = BitwiseData::default();
     setup_header.concat(&bytes_before_codebook);

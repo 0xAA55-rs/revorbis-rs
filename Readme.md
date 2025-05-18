@@ -19,7 +19,7 @@ Currently I've done parsing the Vorbis headers:
 ```rust
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct VorbisSetupHeader {
-    pub static_codebooks: CodeBooks,
+    pub static_codebooks: StaticCodeBooks,
     pub floors: Vec<VorbisFloor>,
     pub residues: Vec<VorbisResidue>,
     pub maps: Vec<VorbisMapping>,

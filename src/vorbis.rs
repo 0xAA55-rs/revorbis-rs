@@ -6,7 +6,7 @@ use std::{
 
 use crate::*;
 
-use codebook::CodeBooks;
+use codebook::StaticCodeBooks;
 use floor::VorbisFloor;
 use mapping::VorbisMapping;
 use residue::VorbisResidue;
@@ -210,7 +210,7 @@ impl VorbisPackableObject for VorbisMode {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct VorbisSetupHeader {
     /// Static codebooks
-    pub static_codebooks: CodeBooks,
+    pub static_codebooks: StaticCodeBooks,
 
     /// Floors
     pub floors: Vec<VorbisFloor>,
@@ -238,7 +238,7 @@ impl VorbisSetupHeader {
         } else {
             let mut ret = Self {
                 // codebooks
-                static_codebooks: CodeBooks::load(bitreader)?,
+                static_codebooks: StaticCodeBooks::load(bitreader)?,
                 ..Default::default()
             };
 

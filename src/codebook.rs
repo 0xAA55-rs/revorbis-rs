@@ -14,7 +14,7 @@ use io_utils::CursorVecU8;
 /// * Vorbis data are all stored in bitwise form, almost anything is not byte-aligned. Split data in byte arrays just won't work on Vorbis data.
 /// * We have to do it in a bitwise way.
 #[derive(Default, Clone, PartialEq, Eq)]
-pub struct CodeBook {
+pub struct StaticCodeBook {
     pub dim: i32,
     pub entries: i32,
     pub lengthlist: Vec<i8>,
@@ -28,7 +28,7 @@ pub struct CodeBook {
 
 impl Debug for CodeBook {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_struct("CodeBook")
+        f.debug_struct("StaticCodeBook")
         .field("dim", &self.dim)
         .field("entries", &self.entries)
         .field("lengthlist", &format_args!("[{}]", format_array!(self.lengthlist, ", ", "{}")))
@@ -42,7 +42,7 @@ impl Debug for CodeBook {
     }
 }
 
-impl CodeBook {
+impl StaticCodeBook {
     /// unpacks a codebook from the packet buffer into the codebook struct,
     /// readies the codebook auxiliary structures for decode
     pub fn load(bitreader: &mut BitReader) -> Result<Self, io::Error> {
@@ -178,7 +178,7 @@ impl CodeBook {
     }
 }
 
-impl VorbisPackableObject for CodeBook {
+impl VorbisPackableObject for StaticCodeBook {
     /// * Pack the book into the bitstream
     fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
     where
@@ -291,7 +291,7 @@ impl VorbisPackableObject for CodeBook {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct CodeBooksPacked {
+pub struct StaticCodeBooksPacked {
     /// * The packed code books
     pub books: BitwiseData,
 
@@ -299,9 +299,9 @@ pub struct CodeBooksPacked {
     pub bits_of_books: Vec<usize>,
 }
 
-impl CodeBooksPacked {
-    pub fn unpack(&self) -> Result<CodeBooks, io::Error> {
-        CodeBooks::load_from_slice(&self.books.data)
+impl StaticCodeBooksPacked {
+    pub fn unpack(&self) -> Result<StaticCodeBooks, io::Error> {
+        StaticCodeBooks::load_from_slice(&self.books.data)
     }
 
     /// * Get the number of total bits in the `data` field
@@ -362,9 +362,9 @@ impl CodeBooksPacked {
 }
 
 #[derive(Default, Clone, PartialEq, Eq)]
-pub struct CodeBooks {
+pub struct StaticCodeBooks {
     /// * The unpacked codebooks
-    pub books: Vec<CodeBook>,
+    pub books: Vec<StaticCodeBook>,
 
     /// * The size of each codebook in bits if they are packed
     pub bits_of_books: Vec<usize>,
@@ -373,16 +373,16 @@ pub struct CodeBooks {
     pub total_bits: usize,
 }
 
-impl CodeBooks {
+impl StaticCodeBooks {
     /// * Unpack the codebooks from the bitstream
     pub fn load(bitreader: &mut BitReader) -> Result<Self, io::Error> {
         let begin_bits = bitreader.total_bits;
         let num_books = (read_bits!(bitreader, 8).wrapping_add(1)) as usize;
-        let mut books = Vec::<CodeBook>::with_capacity(num_books);
+        let mut books = Vec::<StaticCodeBook>::with_capacity(num_books);
         let mut bits_of_books = Vec::<usize>::with_capacity(num_books);
         for _ in 0..num_books {
             let cur_bit_pos = bitreader.total_bits;
-            books.push(CodeBook::load(bitreader)?);
+            books.push(StaticCodeBook::load(bitreader)?);
             bits_of_books.push(bitreader.total_bits - cur_bit_pos);
         }
         Ok(Self {
@@ -419,7 +419,7 @@ impl CodeBooks {
     }
 
     /// * Pack the codebook to binary for storage.
-    pub fn to_packed_codebooks(&self) -> Result<CodeBooksPacked, io::Error> {
+    pub fn to_packed_codebooks(&self) -> Result<StaticCodeBooksPacked, io::Error> {
         let mut bitwriter = BitWriter::new(CursorVecU8::default());
         let mut bits_of_books = Vec::<usize>::with_capacity(self.books.len());
         write_bits!(bitwriter, self.books.len().wrapping_sub(1), 8);
@@ -430,14 +430,14 @@ impl CodeBooks {
         }
         let total_bits = bitwriter.total_bits;
         let books = bitwriter.into_bytes();
-        Ok(CodeBooksPacked{
+        Ok(StaticCodeBooksPacked{
             books: BitwiseData::new(&books, total_bits),
             bits_of_books,
         })
     }
 }
 
-impl VorbisPackableObject for CodeBooks {
+impl VorbisPackableObject for StaticCodeBooks {
     /// * Pack to bitstream
     fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
     where
@@ -453,18 +453,18 @@ impl VorbisPackableObject for CodeBooks {
     }
 }
 
-impl From<CodeBooksPacked> for CodeBooks {
-    fn from(packed: CodeBooksPacked) -> Self {
+impl From<StaticCodeBooksPacked> for StaticCodeBooks {
+    fn from(packed: StaticCodeBooksPacked) -> Self {
         let ret = Self::load_from_slice(&packed.books.data).unwrap();
-        assert_eq!(ret.bits_of_books, packed.bits_of_books, "CodeBooks::from(&CodeBooksPacked), bits_of_books");
-        assert_eq!(ret.total_bits, packed.books.total_bits, "CodeBooks::from(&CodeBooksPacked), total_bits");
+        assert_eq!(ret.bits_of_books, packed.bits_of_books, "StaticCodeBooks::from(&StaticCodeBooksPacked), bits_of_books");
+        assert_eq!(ret.total_bits, packed.books.total_bits, "StaticCodeBooks::from(&StaticCodeBooksPacked), total_bits");
         ret
     }
 }
 
-impl Debug for CodeBooks {
+impl Debug for StaticCodeBooks {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_struct("CodeBooks")
+        f.debug_struct("StaticCodeBooks")
         .field("books", &self.books)
         .field("bits_of_books", &format_args!("[{}]", format_array!(self.bits_of_books, ", ", "0x{:04x}")))
         .field("total_bits", &self.total_bits)
@@ -472,4 +472,4 @@ impl Debug for CodeBooks {
     }
 }
 
-derive_index!(CodeBooks, CodeBook, books);
+derive_index!(StaticCodeBooks, StaticCodeBook, books);

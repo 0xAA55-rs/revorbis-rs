@@ -276,7 +276,7 @@ impl BitWriterCursor {
     }
 }
 
-/// * Read bits of data using the environment `bitreader` variable, an instance of `BitReader`
+/// * Read bits of data using `BitReader`
 #[macro_export]
 macro_rules! read_bits {
     ($bitreader:ident, $bits:expr) => {
@@ -288,7 +288,7 @@ macro_rules! read_bits {
     };
 }
 
-/// * Write bits of data using the environment `bitwriter` variable, an instance of `BitWriter<W>`
+/// * Write bits of data using `BitWriter<W>`
 #[macro_export]
 macro_rules! write_bits {
     ($bitwriter:ident, $data:expr, $bits:expr) => {

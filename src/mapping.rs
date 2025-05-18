@@ -12,9 +12,6 @@ pub struct VorbisMapping {
     /// Mapping type
     pub mapping_type: i32,
 
-    /// Channels
-    pub channels: i32,
-
     /// <= 16
     pub submaps: i32,
 
@@ -63,7 +60,6 @@ impl VorbisMapping {
         };
         let mut ret = Self {
             submaps,
-            channels,
             coupling_steps,
             ..Default::default()
         };
@@ -137,8 +133,8 @@ impl VorbisMapping {
             write_bits!(bitwriter, 1, 1);
             write_bits!(bitwriter, self.coupling_steps.wrapping_sub(1), 8);
             for i in 0..self.coupling_steps as usize {
-                write_bits!(bitwriter, self.coupling_mag[i], ilog!(self.channels - 1));
-                write_bits!(bitwriter, self.coupling_ang[i], ilog!(self.channels - 1));
+                write_bits!(bitwriter, self.coupling_mag[i], ilog!(channels - 1));
+                write_bits!(bitwriter, self.coupling_ang[i], ilog!(channels - 1));
             }
         } else {
             write_bits!(bitwriter, 0, 1);
@@ -147,7 +143,7 @@ impl VorbisMapping {
         write_bits!(bitwriter, 0, 2);
 
         if self.submaps > 1 {
-            for i in 0..self.channels as usize {
+            for i in 0..channels as usize {
                 write_bits!(bitwriter, self.chmuxlist[i], 4);
             }
         }
@@ -165,7 +161,6 @@ impl Debug for VorbisMapping {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("VorbisMapping")
         .field("mapping_type", &self.mapping_type)
-        .field("channels", &self.channels)
         .field("submaps", &self.submaps)
         .field("chmuxlist", &format_args!("[{}]", format_array!(self.chmuxlist)))
         .field("floorsubmap", &format_args!("[{}]", format_array!(self.floorsubmap)))
@@ -181,7 +176,6 @@ impl Default for VorbisMapping {
     fn default() -> Self {
         Self {
             mapping_type: 0,
-            channels: 0,
             submaps: 0,
             chmuxlist: CopiableBuffer::default(),
             floorsubmap: CopiableBuffer::default(),

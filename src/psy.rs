@@ -3,16 +3,10 @@ use std::{
     fmt::{self, Debug, Formatter},
 };
 
-const P_BANDS: usize = 17;
-const P_LEVELS: usize = 8;
-const P_LEVEL_0: f32 = 30.0;
-const P_NOISECURVES: usize = 3;
-
-const NOISE_COMPAND_LEVELS: usize = 40;
-
 use crate::*;
 use vorbis::*;
 use envelope::*;
+use psy_masking::*;
 
 #[derive(Clone, Copy, PartialEq)]
 #[allow(non_snake_case)]
@@ -147,3 +141,22 @@ impl Debug for VorbisInfoPsyGlobal {
         .finish()
     }
 }
+
+fn min_curve(c: &mut [f32], c2: &[f32]) {
+    for i in 0..EHMER_MAX {
+        c[i] = c[i].min(c2[i]);
+    }
+}
+
+fn max_curve(c: &mut [f32], c2: &[f32]) {
+    for i in 0..EHMER_MAX {
+        c[i] = c[i].max(c2[i]);
+    }
+}
+
+fn attenuate_curve(c: &mut [f32], att: f32) {
+    for i in 0..EHMER_MAX {
+        c[i] *= att;
+    }
+}
+

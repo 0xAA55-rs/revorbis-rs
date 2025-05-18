@@ -1,6 +1,5 @@
-pub mod vorbis;
-pub mod bitwise;
-
+mod vorbis;
+mod bitwise;
 mod utils;
 
 mod codebook;
@@ -8,13 +7,15 @@ mod floor;
 mod mapping;
 mod residue;
 mod psy;
+mod psych;
 mod psy_masking;
 mod scales;
 mod bitrate;
-
 mod mdct;
 mod drft;
 mod envelope;
+
+mod vorbisenc;
 
 pub use utils::*;
 pub use bitwise::*;

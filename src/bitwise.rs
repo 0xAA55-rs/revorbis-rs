@@ -288,6 +288,14 @@ macro_rules! read_bits {
     };
 }
 
+/// * Read a `f32` using `BitReader`
+#[macro_export]
+macro_rules! read_f32 {
+    ($bitreader:ident) => {
+        unsafe {std::mem::transmute::<_, f32>(read_bits!($bitreader, 32))}
+    };
+}
+
 /// * Write bits of data using `BitWriter<W>`
 #[macro_export]
 macro_rules! write_bits {
@@ -297,6 +305,14 @@ macro_rules! write_bits {
         } else {
             $bitwriter.write($data as u32, $bits)?
         }
+    };
+}
+
+/// * Write a `f32` using `BitWriter<W>`
+#[macro_export]
+macro_rules! write_f32 {
+    ($bitwriter:ident, $data:expr) => {
+        write_bits!($bitwriter, unsafe {std::mem::transmute::<_, u32>($data)}, 32)
     };
 }
 

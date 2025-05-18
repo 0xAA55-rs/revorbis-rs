@@ -13,14 +13,14 @@ use io_utils::CursorVecU8;
 /// * And then I can sum up how many **bits** were used to store the codebooks.
 /// * Vorbis data are all stored in bitwise form, almost anything is not byte-aligned. Split data in byte arrays just won't work on Vorbis data.
 /// * We have to do it in a bitwise way.
-#[derive(Default, Clone, PartialEq, Eq)]
+#[derive(Default, Clone, PartialEq)]
 pub struct StaticCodeBook {
     pub dim: i32,
     pub entries: i32,
     pub lengthlist: Vec<i8>,
     pub maptype: i32,
-    pub q_min: i32,
-    pub q_delta: i32,
+    pub q_min: f32,
+    pub q_delta: f32,
     pub q_quant: i32,
     pub q_sequencep: i32,
     pub quantlist: Vec<i32>,
@@ -113,8 +113,8 @@ impl StaticCodeBook {
             1 | 2 => {
                 /* implicitly populated value mapping */
                 /* explicitly populated value mapping */
-                ret.q_min = read_bits!(bitreader, 32);
-                ret.q_delta = read_bits!(bitreader, 32);
+                ret.q_min = read_f32!(bitreader);
+                ret.q_delta = read_f32!(bitreader);
                 ret.q_quant = read_bits!(bitreader, 4).wrapping_add(1);
                 ret.q_sequencep = read_bits!(bitreader, 1);
 
@@ -268,8 +268,8 @@ impl VorbisPackableObject for StaticCodeBook {
                     return_Err!(io::Error::new(io::ErrorKind::InvalidData, "Missing quantlist data".to_string()));
                 }
 
-                write_bits!(bitwriter, self.q_min, 32);
-                write_bits!(bitwriter, self.q_delta, 32);
+                write_f32!(bitwriter, self.q_min);
+                write_f32!(bitwriter, self.q_delta);
                 write_bits!(bitwriter, self.q_quant.wrapping_sub(1), 4);
                 write_bits!(bitwriter, self.q_sequencep, 1);
 
@@ -361,7 +361,7 @@ impl StaticCodeBooksPacked {
     }
 }
 
-#[derive(Default, Clone, PartialEq, Eq)]
+#[derive(Default, Clone, PartialEq)]
 pub struct StaticCodeBooks {
     /// * The unpacked codebooks
     pub books: Vec<StaticCodeBook>,

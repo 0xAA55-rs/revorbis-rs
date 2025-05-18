@@ -219,15 +219,6 @@ pub struct VorbisSetupHeader {
 
     /// Modes
     pub modes: Vec<VorbisMode>,
-
-    /// Codebooks
-    pub codebooks: Vec<CodeBook>,
-
-    /// Encode only
-    pub psys: CopiableBuffer<VorbisInfoPsy, 4>,
-    pub psy_g: VorbisInfoPsyGlobal,
-
-    pub halfrate_flag: bool,
 }
 
 impl VorbisSetupHeader {
@@ -305,14 +296,6 @@ impl VorbisSetupHeader {
         }
     }
 
-    pub fn init_codebooks(&mut self, for_encode: bool) -> Result<(), io::Error> {
-        self.codebooks.clear();
-        self.codebooks.reserve(self.static_codebooks.len());
-        for book in self.static_codebooks.iter() {
-            self.codebooks.push(CodeBook::new(for_encode, book)?);
-        }
-        Ok(())
-    }
     /// * Pack to the bitstream
     pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>, ident_header: &VorbisIdentificationHeader) -> Result<usize, io::Error>
     where
@@ -362,6 +345,52 @@ impl VorbisSetupHeader {
     }
 }
 
+/// * VorbisCodecSetup
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct VorbisCodecSetup {
+    /// Static codebooks
+    pub static_codebooks: Vec<StaticCodeBook>,
+
+    /// Floors
+    pub floors: Vec<VorbisFloor>,
+
+    /// Residues
+    pub residues: Vec<VorbisResidue>,
+
+    /// Maps
+    pub maps: Vec<VorbisMapping>,
+
+    /// Modes
+    pub modes: Vec<VorbisMode>,
+
+    /// Codebooks
+    pub codebooks: Vec<CodeBook>,
+
+    /// Encode only
+    pub psys: CopiableBuffer<VorbisInfoPsy, 4>,
+    pub psy_g: VorbisInfoPsyGlobal,
+
+    pub halfrate_flag: bool,
+}
+
+impl VorbisCodecSetup {
+    pub fn new(setup_header: &VorbisSetupHeader, for_encode: bool) -> Result<Self, io::Error> {
+        let mut codebooks = Vec::<CodeBook>::with_capacity(setup_header.static_codebooks.len());
+        for book in setup_header.static_codebooks.iter() {
+            codebooks.push(CodeBook::new(for_encode, book)?);
+        }
+        Ok(Self {
+            static_codebooks: setup_header.static_codebooks.clone(),
+            floors: setup_header.floors.clone(),
+            residues: setup_header.residues.clone(),
+            maps: setup_header.maps.clone(),
+            modes: setup_header.modes.clone(),
+            codebooks,
+            ..Default::default()
+        })
+    }
+}
+
 /// * The `VorbisInfo` structure
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct VorbisInfo {
@@ -373,11 +402,11 @@ pub struct VorbisInfo {
     pub bitrate_lower: i32,
     pub bitrate_window: i32,
     pub block_size: [i32; 2],
-    pub codec_setup: VorbisSetupHeader,
+    pub codec_setup: VorbisCodecSetup,
 }
 
 impl VorbisInfo {
-    pub fn new(identification_header: &VorbisIdentificationHeader, setup_header: &VorbisSetupHeader) -> Self {
+    pub fn new(identification_header: &VorbisIdentificationHeader, codec_setup: &VorbisCodecSetup) -> Self {
         Self {
             version: identification_header.version,
             channels: identification_header.channels,
@@ -387,7 +416,7 @@ impl VorbisInfo {
             bitrate_lower: identification_header.bitrate_lower,
             bitrate_window: 0,
             block_size: identification_header.block_size,
-            codec_setup: setup_header.clone()
+            codec_setup: codec_setup.clone()
         }
     }
 }
@@ -430,7 +459,6 @@ impl VorbisDspStatePrivate{
             ..Default::default()
         };
 
-        info.codec_setup.init_codebooks(for_encode)?;
         if for_encode {
             ret.fft_look = [
                 DrftLookup::new(block_size[0]),

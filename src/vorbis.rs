@@ -470,7 +470,7 @@ struct VorbisBlockInternal {
 
 /// Necessary stream state for linking to the framing abstraction
 #[derive(Default, Debug, Clone, PartialEq)]
-pub struct VorbisBlock {
+pub struct VorbisBlock<'a> {
     pcm: Vec<Vec<f32>>,
 
     lw: i32,
@@ -484,7 +484,7 @@ pub struct VorbisBlock {
     sequence: i64,
 
     /// For read-only access of configuration
-    vorbis_dsp_state: VorbisDspState,
+    vorbis_dsp_state: &'a VorbisDspState,
 
     glue_bits: i32,
     time_bits: i32,

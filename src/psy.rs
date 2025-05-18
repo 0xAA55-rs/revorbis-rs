@@ -16,7 +16,7 @@ use envelope::*;
 
 #[derive(Clone, Copy, PartialEq)]
 #[allow(non_snake_case)]
-pub struct VorbisPsy {
+pub struct VorbisInfoPsy {
 	pub block_flag: bool,
 
 	pub ath_adjatt: f32,
@@ -46,9 +46,9 @@ pub struct VorbisPsy {
 	pub normal_thresh: f64,
 }
 
-impl Debug for VorbisPsy {
+impl Debug for VorbisInfoPsy {
 	fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-		f.debug_struct("VorbisPsy")
+		f.debug_struct("VorbisInfoPsy")
 		.field("block_flag", &self.block_flag)
 		.field("ath_adjatt", &self.ath_adjatt)
 		.field("ath_maxatt", &self.ath_maxatt)
@@ -74,7 +74,7 @@ impl Debug for VorbisPsy {
 	}
 }
 
-impl Default for VorbisPsy {
+impl Default for VorbisInfoPsy {
 	fn default() -> Self {
 		Self {
 			block_flag: false,
@@ -105,7 +105,7 @@ impl Default for VorbisPsy {
 
 #[derive(Clone, Copy, Default, PartialEq)]
 #[allow(non_snake_case)]
-pub struct VorbisPsyGlobal {
+pub struct VorbisInfoPsyGlobal {
 	pub eighth_octave_lines: i32,
 
 	/* for block long/short tuning; encode only */
@@ -124,9 +124,9 @@ pub struct VorbisPsyGlobal {
 	pub sliding_lowpass: [[i32; PACKETBLOBS]; 2],
 }
 
-impl Debug for VorbisPsyGlobal {
+impl Debug for VorbisInfoPsyGlobal {
 	fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-		f.debug_struct("VorbisPsyGlobal")
+		f.debug_struct("VorbisInfoPsyGlobal")
 		.field("eighth_octave_lines", &self.eighth_octave_lines)
 		.field("preecho_thresh", &format_args!("[{}]", format_array!(self.preecho_thresh, ", ", "{}")))
 		.field("postecho_thresh", &format_args!("[{}]", format_array!(self.postecho_thresh, ", ", "{}")))

@@ -9,9 +9,30 @@ macro_rules! format_array {
     () => {
         "".to_string()
     };
+    ($data:expr) => {
+        format_array!($data, ", ", "{}")
+    };
+    ($data:expr, hex2) => {
+        format_array!($data, " ", "{:02x}")
+    };
+    ($data:expr, hex4) => {
+        format_array!($data, " ", "{:04x}")
+    };
+    ($data:expr, hex8) => {
+        format_array!($data, " ", "{:08x}")
+    };
+    ($data:expr, hex2arr) => {
+        format_array!($data, ", ", "0x{:02x}")
+    };
+    ($data:expr, hex4arr) => {
+        format_array!($data, ", ", "0x{:04x}")
+    };
+    ($data:expr, hex8arr) => {
+        format_array!($data, ", ", "0x{:08x}")
+    };
     ($data:expr, $delims:expr, $($arg:tt)*) => {
         $data.iter().map(|&v|format!($($arg)*, v)).collect::<Vec<_>>().join($delims)
-    }
+    };
 }
 
 #[macro_export]

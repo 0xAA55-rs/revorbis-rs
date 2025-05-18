@@ -121,7 +121,7 @@ impl Debug for VorbisFloor0 {
         .field("barkmap", &self.barkmap)
         .field("ampbits", &self.ampbits)
         .field("ampdB", &self.ampdB)
-        .field("books", &format_args!("[{}]", format_array!(self.books, ", ", "{}")))
+        .field("books", &format_args!("[{}]", format_array!(self.books)))
         .field("lessthan", &self.lessthan)
         .field("greaterthan", &self.greaterthan)
         .finish()
@@ -236,7 +236,7 @@ impl VorbisFloor1 {
         checker.sort();
         for i in 1..checker.len() {
             if checker[i - 1] == checker[i] {
-                return_Err!(io::Error::new(io::ErrorKind::InvalidData, format!("Bad postlist: [{}]", format_array!(ret.postlist, ", ", "{}"))));
+                return_Err!(io::Error::new(io::ErrorKind::InvalidData, format!("Bad postlist: [{}]", format_array!(ret.postlist))));
             }
         }
 
@@ -288,13 +288,13 @@ impl Debug for VorbisFloor1 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("VorbisFloor1")
         .field("partitions", &self.partitions)
-        .field("partitions_class", &format_args!("[{}]", format_array!(self.partitions_class, ", ", "{}")))
-        .field("class_dim", &format_args!("[{}]", format_array!(self.class_dim, ", ", "{}")))
-        .field("class_subs", &format_args!("[{}]", format_array!(self.class_subs, ", ", "{}")))
-        .field("class_book", &format_args!("[{}]", format_array!(self.class_book, ", ", "{}")))
-        .field("class_subbook", &format_args!("[{}]", self.class_subbook.iter().map(|subbook|format!("[{}]", format_array!(subbook, ", ", "{}"))).collect::<Vec<_>>().join(", ")))
+        .field("partitions_class", &format_args!("[{}]", format_array!(self.partitions_class)))
+        .field("class_dim", &format_args!("[{}]", format_array!(self.class_dim)))
+        .field("class_subs", &format_args!("[{}]", format_array!(self.class_subs)))
+        .field("class_book", &format_args!("[{}]", format_array!(self.class_book)))
+        .field("class_subbook", &format_args!("[{}]", self.class_subbook.iter().map(|subbook|format!("[{}]", format_array!(subbook))).collect::<Vec<_>>().join(", ")))
         .field("mult", &self.mult)
-        .field("postlist", &format_args!("[{}]", format_array!(self.postlist, ", ", "{}")))
+        .field("postlist", &format_args!("[{}]", format_array!(self.postlist)))
         .field("maxover", &self.maxover)
         .field("maxunder", &self.maxunder)
         .field("maxerr", &self.maxerr)

@@ -17,8 +17,8 @@ impl Debug for DrftLookup {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("DrftLookup")
         .field("n", &self.n)
-        .field("trigcache", &format_args!("[{}]", format_array!(self.trigcache, ", ", "{}")))
-        .field("splitcache", &format_args!("[{}]", format_array!(self.splitcache, ", ", "{}")))
+        .field("trigcache", &format_args!("[{}]", format_array!(self.trigcache)))
+        .field("splitcache", &format_args!("[{}]", format_array!(self.splitcache)))
         .finish()
     }
 }

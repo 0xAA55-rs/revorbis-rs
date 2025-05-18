@@ -169,12 +169,12 @@ impl Debug for VorbisMapping {
         .field("mapping_type", &self.mapping_type)
         .field("channels", &self.channels)
         .field("submaps", &self.submaps)
-        .field("chmuxlist", &format_args!("[{}]", format_array!(self.chmuxlist, ", ", "{}")))
-        .field("floorsubmap", &format_args!("[{}]", format_array!(self.floorsubmap, ", ", "{}")))
-        .field("residuesubmap", &format_args!("[{}]", format_array!(self.residuesubmap, ", ", "{}")))
+        .field("chmuxlist", &format_args!("[{}]", format_array!(self.chmuxlist)))
+        .field("floorsubmap", &format_args!("[{}]", format_array!(self.floorsubmap)))
+        .field("residuesubmap", &format_args!("[{}]", format_array!(self.residuesubmap)))
         .field("coupling_steps", &self.coupling_steps)
-        .field("coupling_mag", &format_args!("[{}]", format_array!(self.coupling_mag, ", ", "{}")))
-        .field("coupling_ang", &format_args!("[{}]", format_array!(self.coupling_ang, ", ", "{}")))
+        .field("coupling_mag", &format_args!("[{}]", format_array!(self.coupling_mag)))
+        .field("coupling_ang", &format_args!("[{}]", format_array!(self.coupling_ang)))
         .finish()
     }
 }

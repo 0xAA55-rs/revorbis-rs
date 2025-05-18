@@ -52,10 +52,10 @@ impl Debug for VorbisInfoPsy {
 		.field("block_flag", &self.block_flag)
 		.field("ath_adjatt", &self.ath_adjatt)
 		.field("ath_maxatt", &self.ath_maxatt)
-		.field("tone_masteratt", &format_args!("[{}]", format_array!(self.tone_masteratt, ", ", "{}")))
+		.field("tone_masteratt", &format_args!("[{}]", format_array!(self.tone_masteratt)))
 		.field("tone_centerboost", &self.tone_centerboost)
 		.field("tone_abs_limit", &self.tone_abs_limit)
-		.field("toneatt", &format_args!("[{}]", format_array!(self.toneatt, ", ", "{}")))
+		.field("toneatt", &format_args!("[{}]", format_array!(self.toneatt)))
 		.field("noisemaskp", &self.noisemaskp)
 		.field("noisemaxsupp", &self.noisemaxsupp)
 		.field("noisewindowlo", &self.noisewindowlo)
@@ -63,8 +63,8 @@ impl Debug for VorbisInfoPsy {
 		.field("noisewindowlomin", &self.noisewindowlomin)
 		.field("noisewindowhimin", &self.noisewindowhimin)
 		.field("noisewindowfixed", &self.noisewindowfixed)
-		.field("noiseoff", &format_args!("[{}]", (0..P_NOISECURVES).map(|i|format!("[{}]", format_array!(self.noiseoff[i], ", ", "{}"))).collect::<Vec<_>>().join(", ")))
-		.field("noisecompand", &format_args!("[{}]", format_array!(self.noisecompand, ", ", "{}")))
+		.field("noiseoff", &format_args!("[{}]", (0..P_NOISECURVES).map(|i|format!("[{}]", format_array!(self.noiseoff[i]))).collect::<Vec<_>>().join(", ")))
+		.field("noisecompand", &format_args!("[{}]", format_array!(self.noisecompand)))
 		.field("max_curve_dB", &self.max_curve_dB)
 		.field("normal_p", &self.normal_p)
 		.field("normal_start", &self.normal_start)
@@ -128,21 +128,21 @@ impl Debug for VorbisInfoPsyGlobal {
 	fn fmt(&self, f: &mut Formatter) -> fmt::Result {
 		f.debug_struct("VorbisInfoPsyGlobal")
 		.field("eighth_octave_lines", &self.eighth_octave_lines)
-		.field("preecho_thresh", &format_args!("[{}]", format_array!(self.preecho_thresh, ", ", "{}")))
-		.field("postecho_thresh", &format_args!("[{}]", format_array!(self.postecho_thresh, ", ", "{}")))
+		.field("preecho_thresh", &format_args!("[{}]", format_array!(self.preecho_thresh)))
+		.field("postecho_thresh", &format_args!("[{}]", format_array!(self.postecho_thresh)))
 		.field("stretch_penalty", &self.stretch_penalty)
 		.field("preecho_minenergy", &self.preecho_minenergy)
 		.field("ampmax_att_per_sec", &self.ampmax_att_per_sec)
-		.field("coupling_pkHz", &format_args!("[{}]", format_array!(self.coupling_pkHz, ", ", "{}")))
+		.field("coupling_pkHz", &format_args!("[{}]", format_array!(self.coupling_pkHz)))
 		.field("coupling_pointlimit", &format_args!("[{}, {}]",
-			format_array!(self.coupling_pointlimit[0], ", ", "{}"),
-			format_array!(self.coupling_pointlimit[1], ", ", "{}"),
+			format_array!(self.coupling_pointlimit[0]),
+			format_array!(self.coupling_pointlimit[1]),
 		))
-		.field("coupling_prepointamp", &format_args!("[{}]", format_array!(self.coupling_prepointamp, ", ", "{}")))
-		.field("coupling_postpointamp", &format_args!("[{}]", format_array!(self.coupling_postpointamp, ", ", "{}")))
+		.field("coupling_prepointamp", &format_args!("[{}]", format_array!(self.coupling_prepointamp)))
+		.field("coupling_postpointamp", &format_args!("[{}]", format_array!(self.coupling_postpointamp)))
 		.field("sliding_lowpass", &format_args!("[{}, {}]",
-			format_array!(self.sliding_lowpass[0], ", ", "{}"),
-			format_array!(self.sliding_lowpass[1], ", ", "{}"),
+			format_array!(self.sliding_lowpass[0]),
+			format_array!(self.sliding_lowpass[1]),
 		))
 		.finish()
 	}

@@ -578,7 +578,7 @@ impl BitwiseData {
 impl Debug for BitwiseData {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("BitwiseData")
-        .field("data", &format_args!("{}", format_array!(self.data, " ", "{:02x}")))
+        .field("data", &format_args!("{}", format_array!(self.data, hex2)))
         .field("total_bits", &self.total_bits)
         .finish()
     }

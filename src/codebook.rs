@@ -473,3 +473,63 @@ impl Debug for StaticCodeBooks {
 }
 
 derive_index!(StaticCodeBooks, StaticCodeBook, books);
+
+/// * This is the codebook for encoding and decoding, it's dynamic, and won't be packed into the Vorbis file.
+#[derive(Default, Clone, PartialEq)]
+pub struct CodeBook {
+    /// codebook dimensions (elements per vector)
+    pub dim: i32,
+
+    /// codebook entries
+    pub entries: i32,
+
+    /// populated codebook entries
+    pub used_entries: i32,
+
+    /// The source book
+    pub static_codebook: Option<StaticCodeBook>,
+
+    // for encode, the below are entry-ordered, fully populated
+    // for decode, the below are ordered by bitreversed codeword and only used entries are populated
+
+    /// list of dim*entries actual entry values
+    pub value_list: Vec<f32>,
+
+    /// list of bitstream codewords for each entry
+    pub code_list: Vec<u32>,
+
+    /// only used if sparseness collapsed
+    pub dec_index: Vec<i32>,
+    pub dec_codelengths: Vec<i8>,
+
+    pub dec_firsttablen: i8,
+    pub dec_firsttable: Vec<u32>,
+    pub dec_maxlength: i8,
+
+    /// The current encoder uses only centered, integer-only lattice books.
+    pub quantvals: i32,
+    pub minval: f32,
+    pub delta: f32,
+}
+
+
+impl Debug for CodeBook {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("CodeBook")
+        .field("dim", &self.dim)
+        .field("entries", &self.entries)
+        .field("used_entries", &self.used_entries)
+        .field("static_codebook", &self.static_codebook)
+        .field("value_list", &format_args!("[{}]", format_array!(self.value_list, ", ", "{}")))
+        .field("code_list", &format_args!("[{}]", format_array!(self.code_list, ", ", "{}")))
+        .field("dec_index", &format_args!("[{}]", format_array!(self.dec_index, ", ", "{}")))
+        .field("dec_codelengths", &format_args!("[{}]", format_array!(self.dec_codelengths, ", ", "{}")))
+        .field("dec_firsttablen", &self.dec_firsttablen)
+        .field("dec_firsttable", &format_args!("[{}]", format_array!(self.dec_firsttable, ", ", "{}")))
+        .field("dec_maxlength", &self.dec_maxlength)
+        .field("quantvals", &self.quantvals)
+        .field("minval", &self.minval)
+        .field("delta", &self.delta)
+        .finish()
+    }
+}

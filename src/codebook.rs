@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::{
     cmp::max,
     fmt::{self, Debug, Formatter},

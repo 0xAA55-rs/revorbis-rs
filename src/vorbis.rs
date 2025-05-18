@@ -6,7 +6,7 @@ use std::{
 
 use crate::*;
 
-use codebook::StaticCodeBooks;
+use codebook::{StaticCodeBook, CodeBook};
 use floor::VorbisFloor;
 use mapping::VorbisMapping;
 use residue::VorbisResidue;
@@ -210,7 +210,7 @@ impl VorbisPackableObject for VorbisMode {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct VorbisSetupHeader {
     /// Static codebooks
-    pub static_codebooks: StaticCodeBooks,
+    pub static_codebooks: Vec<StaticCodeBook>,
 
     /// Floors
     pub floors: Vec<VorbisFloor>,
@@ -236,11 +236,15 @@ impl VorbisSetupHeader {
         if ident != b"\x05vorbis" {
             Err(io::Error::new(io::ErrorKind::InvalidData, format!("Not a Vorbis comment header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
         } else {
-            let mut ret = Self {
-                // codebooks
-                static_codebooks: StaticCodeBooks::load(bitreader)?,
-                ..Default::default()
-            };
+            let mut ret = Self::default();
+
+            let books = read_bits!(bitreader, 8).wrapping_add(1);
+            if books == 0 {
+                return_Err!(io::Error::new(io::ErrorKind::InvalidData, "No codebook backend settings.".to_string()));
+            }
+            for _ in 0..books {
+                ret.static_codebooks.push(StaticCodeBook::load(bitreader)?);
+            }
 
             // time backend settings; hooks are unused
             let times = read_bits!(bitreader, 6).wrapping_add(1);
@@ -308,7 +312,10 @@ impl VorbisPackableObject for VorbisSetupHeader {
         write_slice!(bitwriter, b"\x05vorbis");
 
         // books
-        self.static_codebooks.pack(bitwriter)?;
+        write_bits!(bitwriter, self.static_codebooks.len().wrapping_sub(1), 8);
+        for book in self.static_codebooks.iter() {
+            book.pack(bitwriter)?;
+        }
 
         // times
         write_bits!(bitwriter, 0, 6);

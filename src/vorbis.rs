@@ -414,7 +414,7 @@ impl VorbisDspStatePrivate{
     /// Analysis side code, but directly related to blocking. Thus it's
     /// here and not in analysis.c (which is for analysis transforms only).
     /// The init is here because some of it is shared
-    pub fn new(info: &VorbisInfo, for_encode: bool) -> Result<Self, io::Error> {
+    pub fn new(info: &mut VorbisInfo, for_encode: bool) -> Result<Self, io::Error> {
         let codec_info = &info.codec_setup;
         let block_size = [info.block_size[0] as usize, info.block_size[1] as usize];
         let hs = if codec_info.halfrate_flag {1} else {0};
@@ -438,6 +438,7 @@ impl VorbisDspStatePrivate{
             ..Default::default()
         };
 
+        info.init_codebooks(for_encode)?;
         if for_encode {
             ret.fft_look = [
                 DrftLookup::new(block_size[0]),

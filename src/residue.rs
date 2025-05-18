@@ -108,11 +108,9 @@ impl VorbisResidue {
         ret.partvals = partvals;
         Ok(ret)
     }
-}
 
-impl VorbisPackableObject for VorbisResidue {
     /// * Pack to the bitstream
-    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;

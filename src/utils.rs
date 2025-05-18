@@ -145,17 +145,6 @@ macro_rules! derive_index {
     }
 }
 
-/// * Any Vorbis objects that can pack into bitstreams should implement this `VorbisPackableObject`
-pub trait VorbisPackableObject {
-    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error> where W: Write;
-
-    fn to_packed(&self) -> Result<BitwiseData, io::Error> {
-        let mut bitwriter = BitWriterCursor::default();
-        let bits = self.pack(&mut bitwriter)?;
-        Ok(BitwiseData::new(&bitwriter.into_bytes(), bits))
-    }
-}
-
 use ogg::{OggPacket, OggPacketType};
 use io_utils::CursorVecU8;
 use vorbis::*;

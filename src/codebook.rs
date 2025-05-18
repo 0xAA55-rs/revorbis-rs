@@ -340,11 +340,9 @@ impl StaticCodeBook {
             }
         }
     }
-}
 
-impl VorbisPackableObject for StaticCodeBook {
     /// * Pack the book into the bitstream
-    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;
@@ -599,11 +597,9 @@ impl StaticCodeBooks {
             bits_of_books,
         })
     }
-}
 
-impl VorbisPackableObject for StaticCodeBooks {
     /// * Pack to bitstream
-    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;

@@ -73,11 +73,9 @@ impl VorbisIdentificationHeader {
         let mut bitreader = BitReader::new(data);
         Self::load(&mut bitreader)
     }
-}
 
-impl VorbisPackableObject for VorbisIdentificationHeader {
     /// * Pack to the bitstream
-    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
     where
         W: Write {
         let bs_1: u8 = ilog!(self.block_size[0] - 1);
@@ -138,11 +136,9 @@ impl VorbisCommentHeader {
             })
         }
     }
-}
 
-impl VorbisPackableObject for VorbisCommentHeader {
     /// * Pack to the bitstream
-    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;
@@ -189,11 +185,9 @@ impl VorbisMode {
             Ok(ret)
         }
     }
-}
 
-impl VorbisPackableObject for VorbisMode {
     /// * Pack to the bitstream
-    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;
@@ -318,11 +312,8 @@ impl VorbisSetupHeader {
         }
         Ok(())
     }
-}
-
-impl VorbisPackableObject for VorbisSetupHeader {
     /// * Pack to the bitstream
-    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>, ident_header: &VorbisIdentificationHeader) -> Result<usize, io::Error>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;

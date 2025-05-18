@@ -35,10 +35,8 @@ impl VorbisFloor {
             Self::Floor1(_) => 1,
         }
     }
-}
 
-impl VorbisPackableObject for VorbisFloor {
-    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
     where
         W: Write {
         match self {
@@ -242,11 +240,9 @@ impl VorbisFloor1 {
 
         Ok(VorbisFloor::Floor1(ret))
     }
-}
 
-impl VorbisPackableObject for VorbisFloor1 {
     /// * Pack to the bitstream
-    fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;

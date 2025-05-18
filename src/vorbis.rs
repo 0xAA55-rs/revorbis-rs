@@ -224,6 +224,9 @@ pub struct VorbisSetupHeader {
     /// Modes
     pub modes: Vec<VorbisMode>,
 
+    /// Codebooks
+    pub codebooks: Vec<CodeBook>,
+
     /// Encode only
     pub psys: CopiableBuffer<VorbisPsy, 4>,
     pub psy_g: VorbisPsyGlobal,
@@ -304,6 +307,14 @@ impl VorbisSetupHeader {
 
             Ok(ret)
         }
+    }
+
+    pub fn init_codebooks(&mut self, for_encode: bool) -> Result<(), io::Error> {
+        self.codebooks.reserve(self.static_codebooks.len());
+        for book in self.static_codebooks.iter() {
+            self.codebooks.push(CodeBook::new(for_encode, book)?);
+        }
+        Ok(())
     }
 }
 

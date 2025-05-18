@@ -13,6 +13,7 @@ use residue::VorbisResidue;
 use psy::{VorbisPsy, VorbisPsyGlobal};
 use envelope::VorbisEnvelopeLookup;
 use mdct::MdctLookup;
+use drft::DrftLookup;
 use copiablebuf::CopiableBuffer;
 
 pub const PACKETBLOBS: usize = 15;
@@ -404,9 +405,51 @@ struct VorbisDspStatePrivate {
     envelope: Option<VorbisEnvelopeLookup>,
     window: [i32; 2],
     transform: [MdctLookup; 2],
-
+    fft_look: [DrftLookup; 2],
+    modebits: i32,
 }
 
+impl VorbisDspStatePrivate{
+    /// Analysis side code, but directly related to blocking. Thus it's
+    /// here and not in analysis.c (which is for analysis transforms only).
+    /// The init is here because some of it is shared
+    pub fn new(info: &VorbisInfo, for_encode: bool) -> Result<Self, io::Error> {
+        let codec_info = &info.codec_setup;
+        let block_size = [info.block_size[0] as usize, info.block_size[1] as usize];
+        let hs = if codec_info.halfrate_flag {1} else {0};
+
+        assert!(codec_info.modes.len() > 0);
+        assert!(block_size[0] >= 64);
+        assert!(block_size[1] >= block_size[0]);
+
+        let mut ret = Self {
+            envelope: None,
+            modebits: ilog!(codec_info.modes.len() - 1),
+            window: [
+                ilog!(block_size[0]) - 7,
+                ilog!(block_size[1]) - 7
+            ],
+            /* MDCT is tranform 0 */
+            transform: [
+                MdctLookup::new(block_size[0] >> hs),
+                MdctLookup::new(block_size[1] >> hs)
+            ],
+            ..Default::default()
+        };
+
+        if for_encode {
+            ret.fft_look = [
+                DrftLookup::new(block_size[0]),
+                DrftLookup::new(block_size[1]),
+            ];
+
+        } else {
+
+        }
+
+        Ok(ret)
+    }
+}
 
 /// * Am I going to reinvent the `libvorbis` wheel myself?
 #[derive(Debug, Default, Clone, PartialEq)]

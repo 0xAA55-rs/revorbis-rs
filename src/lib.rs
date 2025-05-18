@@ -9,6 +9,7 @@ mod mapping;
 mod residue;
 mod psy;
 mod psy_masking;
+mod scales;
 mod bitrate;
 
 mod mdct;

@@ -311,6 +311,7 @@ impl VorbisSetupHeader {
     }
 
     pub fn init_codebooks(&mut self, for_encode: bool) -> Result<(), io::Error> {
+        self.codebooks.clear();
         self.codebooks.reserve(self.static_codebooks.len());
         for book in self.static_codebooks.iter() {
             self.codebooks.push(CodeBook::new(for_encode, book)?);

@@ -22,7 +22,7 @@ pub struct StaticCodeBook {
     pub q_min: f32,
     pub q_delta: f32,
     pub q_quant: i32,
-    pub q_sequencep: i32,
+    pub q_sequencep: bool,
     pub quantlist: Vec<i32>,
 }
 
@@ -116,7 +116,7 @@ impl StaticCodeBook {
                 ret.q_min = read_f32!(bitreader);
                 ret.q_delta = read_f32!(bitreader);
                 ret.q_quant = read_bits!(bitreader, 4).wrapping_add(1);
-                ret.q_sequencep = read_bits!(bitreader, 1);
+                ret.q_sequencep = read_bits!(bitreader, 1) != 0;
 
                 let quantvals = match ret.maptype {
                     1 => if ret.dim == 0 {0} else {ret.book_maptype1_quantvals() as usize},

@@ -677,6 +677,14 @@ pub struct CodeBook {
 }
 
 impl CodeBook {
+    pub fn new(for_encode: bool, src: &StaticCodeBook) -> Result<Self, io::Error> {
+        if for_encode {
+            Self::new_for_encode(src)
+        } else {
+            Self::new_for_decode(src)
+        }
+    }
+
     pub fn new_for_encode(src: &StaticCodeBook) -> Result<Self, io::Error> {
         Ok(Self {
             dim: src.dim,

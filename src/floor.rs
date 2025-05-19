@@ -40,7 +40,7 @@ impl VorbisFloor {
     where
         W: Write {
         match self {
-            Self::Floor0(_) => Ok(0),
+            Self::Floor0(floor0) => floor0.pack(bitwriter),
             Self::Floor1(floor1) => floor1.pack(bitwriter),
         }
     }
@@ -109,6 +109,15 @@ impl VorbisFloor0 {
 
         Ok(VorbisFloor::Floor0(ret))
     }
+
+    /// * Pack to the bitstream
+    pub fn pack<W>(&self, _: &mut BitWriter<W>) -> Result<usize, io::Error>
+    where
+        W: Write {
+        // Floor0 never pack.
+        Ok(0)
+    }
+
 }
 
 impl Debug for VorbisFloor0 {

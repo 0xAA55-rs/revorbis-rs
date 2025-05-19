@@ -63,6 +63,7 @@ struct Adj3 {
 }
 
 #[derive(Default, Debug, Clone, Copy)]
+#[allow(non_snake_case)]
 struct AdjStereo {
 	pre: [i32; PACKETBLOBS],
 	post: [i32; PACKETBLOBS],

@@ -143,30 +143,7 @@ impl Debug for VorbisInfoPsy {
 
 impl Default for VorbisInfoPsy {
     fn default() -> Self {
-        Self {
-            block_flag: false,
-            ath_adjatt: 0.0,
-            ath_maxatt: 0.0,
-            tone_masteratt: [0.0; P_NOISECURVES],
-            tone_centerboost: 0.0,
-            tone_decay: 0.0,
-            tone_abs_limit: 0.0,
-            toneatt: [0.0; P_BANDS],
-            noisemaskp: 0,
-            noisemaxsupp: 0.0,
-            noisewindowlo: 0.0,
-            noisewindowhi: 0.0,
-            noisewindowlomin: 0,
-            noisewindowhimin: 0,
-            noisewindowfixed: 0,
-            noiseoff: [[0.0; P_BANDS]; P_NOISECURVES],
-            noisecompand: [0.0; NOISE_COMPAND_LEVELS],
-            max_curve_dB: 0.0,
-            normal_p: 0,
-            normal_start: 0,
-            normal_partition: 0,
-            normal_thresh: 0.0,
-        }
+        unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}
     }
 }
 
@@ -402,6 +379,13 @@ pub struct VorbisLookPsy<'a> {
 
     /// Masking compensation value
     pub m_val: f32,
+}
+
+impl Default for VorbisLookPsy<'_> {
+    #[allow(invalid_value)]
+    fn default() -> Self {
+        unsafe {mem::MaybeUninit::zeroed().assume_init()}
+    }
 }
 
 impl<'a> VorbisLookPsy<'a> {

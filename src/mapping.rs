@@ -4,6 +4,7 @@ use std::{
 };
 
 use crate::*;
+use bitwise::{BitReader, BitWriter};
 use headers::{VorbisSetupHeader, VorbisIdentificationHeader};
 use copiablebuf::CopiableBuffer;
 

@@ -1,5 +1,6 @@
 use std::{
     fmt::{self, Debug, Formatter},
+    mem,
     io::{self, Write},
 };
 
@@ -475,21 +476,20 @@ impl Debug for VorbisLookFloor1<'_> {
 
 impl Default for VorbisFloor1 {
     fn default() -> Self {
-        Self {
-            partitions: 0,
-            partitions_class: CopiableBuffer::default(),
-            class_dim: CopiableBuffer::default(),
-            class_subs: CopiableBuffer::default(),
-            class_book: CopiableBuffer::default(),
-            class_subbook: CopiableBuffer::default(),
-            mult: 0,
-            postlist: CopiableBuffer::default(),
-            maxover: 0.0,
-            maxunder: 0.0,
-            maxerr: 0.0,
-            twofitweight: 0.0,
-            twofitatten: 0.0,
-            n: 0
-        }
+        unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}
+    }
+}
+
+impl<'a> Default for VorbisLookFloor0<'_> {
+    #[allow(invalid_value)]
+    fn default() -> Self {
+        unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}
+    }
+}
+
+impl<'a> Default for VorbisLookFloor1<'_> {
+    #[allow(invalid_value)]
+    fn default() -> Self {
+        unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}
     }
 }

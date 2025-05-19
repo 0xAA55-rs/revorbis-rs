@@ -164,7 +164,7 @@ impl VorbisResidue {
     where
         W: Write + Debug
     {
-        let codec_setup = &vorbis_dsp_state.info.codec_setup;
+        let codec_setup = &vorbis_dsp_state.vorbis_info.codec_setup;
         let fullbooks = &codec_setup.fullbooks;
         let phrasebook = &codec_setup.fullbooks[self.groupbook as usize];
         let dim = phrasebook.dim as usize;

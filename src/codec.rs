@@ -2,7 +2,7 @@
 #![allow(private_interfaces)]
 use std::{
     io::{self, Write},
-    fmt::Debug,
+    fmt::{self, Debug, Formatter},
 };
 
 use crate::*;
@@ -10,9 +10,9 @@ use crate::*;
 use headers::{VorbisIdentificationHeader, VorbisMode, VorbisSetupHeader};
 use bitrate::{VorbisBitrateManagerInfo, VorbisBitrateManagerState};
 use codebook::{StaticCodeBook, CodeBook};
-use floor::VorbisFloor;
+use floor::{VorbisFloor, VorbisLookFloor};
 use mapping::VorbisMapping;
-use residue::VorbisResidue;
+use residue::{VorbisResidue, VorbisLookResidue};
 use psy::{VorbisInfoPsyGlobal, VorbisLookPsyGlobal, VorbisInfoPsy, VorbisLookPsy};
 use envelope::VorbisEnvelopeLookup;
 use mdct::MdctLookup;
@@ -137,18 +137,18 @@ pub struct VorbisInfo {
 }
 
 impl VorbisInfo {
-    pub fn new(identification_header: &VorbisIdentificationHeader, codec_setup: &VorbisCodecSetup) -> Self {
-        Self {
-            version: identification_header.version,
-            channels: identification_header.channels,
-            sample_rate: identification_header.sample_rate,
-            bitrate_upper: identification_header.bitrate_upper,
-            bitrate_nominal: identification_header.bitrate_nominal,
-            bitrate_lower: identification_header.bitrate_lower,
+    pub fn new(identification_header: &VorbisIdentificationHeader, setup_header: &VorbisSetupHeader) -> io::Result<Self> {
+        let id = identification_header;
+        Ok(Self {
+            version: id.version,
+            channels: id.channels,
+            sample_rate: id.sample_rate,
+            bitrate_upper: id.bitrate_upper,
+            bitrate_nominal: id.bitrate_nominal,
+            bitrate_lower: id.bitrate_lower,
             bitrate_window: 0,
-            block_size: identification_header.block_size,
-            codec_setup: codec_setup.clone()
-        }
+            codec_setup: VorbisCodecSetup::new(setup_header)?,
+        })
     }
 
     pub fn psy_global_look(&self) -> VorbisLookPsyGlobal {
@@ -186,34 +186,63 @@ where
     /// here and not in analysis.c (which is for analysis transforms only).
     /// The init is here because some of it is shared
     pub fn new(vorbis_dsp_state: &'a VorbisDspState<'_, W>) -> io::Result<Self> {
-        let codec_info = &info.codec_setup;
-        let hs = if codec_info.halfrate_flag {1} else {0};
+        let vorbis_info = &vorbis_dsp_state.vorbis_info;
+        let codec_setup = &vorbis_info.codec_setup;
+        let for_encode = vorbis_dsp_state.for_encode;
         let block_size = [codec_setup.block_size[0] as usize, codec_setup.block_size[1] as usize];
+        let hs = if codec_setup.halfrate_flag {1} else {0};
 
-        assert!(codec_info.modes.len() > 0);
+        assert!(codec_setup.modes.len() > 0);
         assert!(block_size[0] >= 64);
         assert!(block_size[1] >= block_size[0]);
 
-        Ok(Self {
-            envelope: None,
-            modebits: ilog!(codec_info.modes.len() - 1),
-            window: [
-                ilog!(block_size[0]) - 7,
-                ilog!(block_size[1]) - 7
-            ],
-            /* MDCT is tranform 0 */
-            transform: [
+        let modebits = ilog!(codec_setup.modes.len() - 1);
+        let transform = [
+            [
                 MdctLookup::new(block_size[0] >> hs),
-                MdctLookup::new(block_size[1] >> hs)
+                MdctLookup::new(block_size[1] >> hs),
             ],
-            fft_look: if for_encode {
-                [
-                    DrftLookup::new(block_size[0]),
-                    DrftLookup::new(block_size[1]),
-                ].to_vec()
-            } else {
-                Vec::new()
-            },
+        ];
+        let window = [
+            ilog!(block_size[0]) - 7,
+            ilog!(block_size[1]) - 7
+        ];
+        let fft_look;
+        if for_encode {
+            fft_look = [
+                DrftLookup::new(block_size[0]),
+                DrftLookup::new(block_size[1]),
+            ].to_vec();
+        } else {
+            fft_look = Vec::new();
+        }
+        let vorbis_info = &vorbis_dsp_state.vorbis_info;
+        let codec_setup = &vorbis_info.codec_setup;
+
+        let mut flr_look = Vec::<VorbisLookFloor<'a>>::with_capacity(codec_setup.floors.len());
+        let mut residue_look = Vec::<VorbisLookResidue<'a>>::with_capacity(codec_setup.residues.len());
+        let mut psy_look = Vec::<VorbisLookPsy<'a>>::with_capacity(codec_setup.psys.len());
+        let psy_g_look = vorbis_info.psy_global_look();
+
+        for floor in codec_setup.floors.iter() {
+            flr_look.push(floor.look());
+        }
+        for residue in codec_setup.residues.iter() {
+            residue_look.push(residue.look(vorbis_dsp_state));
+        }
+        for psy in codec_setup.psys.iter() {
+            psy_look.push(VorbisLookPsy::new(psy, &codec_setup.psy_g, block_size[psy.block_flag as usize] / 2, vorbis_info.sample_rate as u32));
+        }
+
+        Ok(Self {
+            modebits,
+            window,
+            transform,
+            fft_look,
+            flr_look,
+            residue_look,
+            psy_look,
+            psy_g_look,
             ..Default::default()
         })
     }
@@ -239,12 +268,115 @@ where
 }
 
 /// * Am I going to reinvent the `libvorbis` wheel myself?
-#[derive(Debug, Clone)]
-pub struct VorbisDspState<'a, 'b, 'c, W>
+pub struct VorbisDspState<'a, W>
 where
     W: Write + Debug
 {
-    pub info: VorbisInfo,
-    pub backend_state: VorbisDspStatePrivate<'a, 'b, 'c, W>,
     pub for_encode: bool,
+    pub vorbis_info: VorbisInfo,
+
+    pub pcm: Vec<Vec<f32>>,
+    pub pcm_ret: Vec<Vec<f32>>,
+    pub pcm_storage: usize,
+    pub pcm_current: usize,
+    pub pcm_returned: usize,
+
+    pub preextrapolate: i32,
+    pub eofflag: bool,
+
+    /// previous window size
+    pub l_w: usize,
+
+    /// current window size
+    pub w: usize,
+    pub n_w: usize,
+    pub center_w: usize,
+
+    pub granulepos: i64,
+
+    pub glue_bits: i64,
+    pub time_bits: i64,
+    pub floor_bits: i64,
+    pub res_bits: i64,
+
+    pub backend_state: VorbisDspStatePrivate<'a, W>,
+}
+
+impl<'a, W> VorbisDspState<'_, W>
+where
+    W: Write + Debug
+{
+    pub fn new(vorbis_info: VorbisInfo, for_encode: bool) -> io::Result<Self> {
+        let codec_setup = &vorbis_info.codec_setup;
+        let pcm_storage = codec_setup.block_size[1] as usize;
+        let pcm = vecvec![[0.0; pcm_storage]; vorbis_info.channels as usize];
+        let pcm_ret = vecvec![[0.0; pcm_storage]; vorbis_info.channels as usize];
+        let center_w = (codec_setup.block_size[1] / 2) as usize;
+        let pcm_current = center_w;
+
+        let mut ret = Self {
+            for_encode,
+            vorbis_info,
+            pcm,
+            pcm_ret,
+            pcm_storage,
+            pcm_current,
+            center_w,
+            ..Default::default()
+        };
+        ret.backend_state = VorbisDspStatePrivate::new(&ret)?;
+        if for_encode {
+            ret.vorbis_info.codec_setup.set_encoder_mode()?;
+        } else {
+            ret.vorbis_info.codec_setup.set_decoder_mode()?;
+        }
+        Ok(ret)
+    }
+}
+
+impl<W> Debug for VorbisDspState<'_, W>
+where
+    W: Write + Debug
+{
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("VorbisDspState")
+        .field("for_encode", &self.for_encode)
+        .field("vorbis_info", &self.vorbis_info)
+        .field("pcm", &NestVecFormatter::new_level1(&self.pcm))
+        .field("pcm_ret", &NestVecFormatter::new_level1(&self.pcm_ret))
+        .field("pcm_storage", &self.pcm_storage)
+        .field("pcm_current", &self.pcm_current)
+        .field("pcm_returned", &self.pcm_returned)
+        .field("preextrapolate", &self.preextrapolate)
+        .field("eofflag", &self.eofflag)
+        .field("l_w", &self.l_w)
+        .field("w", &self.w)
+        .field("n_w", &self.n_w)
+        .field("center_w", &self.center_w)
+        .field("granulepos", &self.granulepos)
+        .field("glue_bits", &self.glue_bits)
+        .field("time_bits", &self.time_bits)
+        .field("floor_bits", &self.floor_bits)
+        .field("res_bits", &self.res_bits)
+        .field("backend_state", &self.backend_state)
+        .finish()
+    }
+}
+
+impl<W> Default for VorbisDspState<'_, W>
+where
+    W: Write + Debug
+{
+    fn default() -> Self {
+        use std::{mem, ptr::{write, addr_of_mut}};
+        let mut ret_z = mem::MaybeUninit::<Self>::zeroed();
+        unsafe {
+            let ptr = ret_z.as_mut_ptr();
+            write(addr_of_mut!((*ptr).vorbis_info), VorbisInfo::default());
+            write(addr_of_mut!((*ptr).pcm), Vec::new());
+            write(addr_of_mut!((*ptr).pcm_ret), Vec::new());
+            write(addr_of_mut!((*ptr).backend_state), VorbisDspStatePrivate::default());
+            ret_z.assume_init()
+        }
+    }
 }

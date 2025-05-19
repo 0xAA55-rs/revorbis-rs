@@ -4,6 +4,7 @@ use std::{
 };
 
 use crate::*;
+use utils::*;
 use headers::VorbisSetupHeader;
 use copiablebuf::CopiableBuffer;
 
@@ -154,6 +155,20 @@ impl Debug for VorbisFloor0 {
         .field("books", &format_args!("[{}]", format_array!(self.books)))
         .field("lessthan", &self.lessthan)
         .field("greaterthan", &self.greaterthan)
+        .finish()
+    }
+}
+
+impl Debug for VorbisLookFloor0<'_> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("VorbisLookFloor0")
+        .field("ln", &self.ln)
+        .field("m", &self.m)
+        .field("linearmap", &NestVecFormatter::new_level1(&self.linearmap))
+        .field("n", &self.n)
+        .field("info", &self.info)
+        .field("bits", &self.bits)
+        .field("frames", &self.frames)
         .finish()
     }
 }

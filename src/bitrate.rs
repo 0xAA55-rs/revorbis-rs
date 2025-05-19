@@ -10,7 +10,7 @@ use codec::VorbisInfo;
 use blocks::VorbisBlock;
 
 #[derive(Debug, Clone)]
-pub struct VorbisBitrateManagerState<'a, 'b, 'c, W>
+pub struct VorbisBitrateManagerState<'a, W>
 where
 	W: Write + Debug
 {
@@ -25,11 +25,11 @@ where
 	pub short_per_long: i32,
 	pub avgfloat: f64,
 
-	pub vorbis_block: Option<&'a VorbisBlock<'a, 'b, 'c, W>>,
+	pub vorbis_block: Option<&'a VorbisBlock<'a, W>>,
 	pub choice: i32,
 }
 
-impl<W> VorbisBitrateManagerState<'_, '_, '_, W>
+impl<W> VorbisBitrateManagerState<'_, W>
 where
     W: Write + Debug
 {
@@ -59,7 +59,7 @@ where
 	}
 }
 
-impl<W> Default for VorbisBitrateManagerState<'_, '_, '_, W>
+impl<W> Default for VorbisBitrateManagerState<'_, W>
 where
     W: Write + Debug
 {

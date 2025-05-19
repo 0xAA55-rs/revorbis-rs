@@ -159,8 +159,8 @@ impl VorbisInfo {
 }
 
 /// * The private part of the `VorbisDspState` for `libvorbis-1.3.7`
-#[derive(Debug, Clone)]
-struct VorbisDspStatePrivate<'a, 'b, 'c, W>
+#[derive(Debug)]
+struct VorbisDspStatePrivate<'a, W>
 where
     W: Write + Debug
 {
@@ -175,10 +175,10 @@ where
     pub psy_look: Vec<VorbisLookPsy<'a>>,
     pub psy_g_look: VorbisLookPsyGlobal<'a>,
 
-    pub bitrate_manager_state: VorbisBitrateManagerState<'a, 'b, 'c, W>,
+    pub bitrate_manager_state: VorbisBitrateManagerState<'a, W>,
 }
 
-impl<W> VorbisDspStatePrivate<'_, '_, '_, W>
+impl<'a, W> VorbisDspStatePrivate<'a, W>
 where
     W: Write + Debug
 {
@@ -248,7 +248,7 @@ where
     }
 }
 
-impl<'a, 'b, 'c, W> Default for VorbisDspStatePrivate<'a, 'b, 'c, W>
+impl<W> Default for VorbisDspStatePrivate<'_, W>
 where
     W: Write + Debug
 {
@@ -259,7 +259,6 @@ where
             let ptr = ret_z.as_mut_ptr();
             write(addr_of_mut!((*ptr).envelope), None);
             write(addr_of_mut!((*ptr).transform), [[MdctLookup::default(), MdctLookup::default()]]);
-            write(addr_of_mut!((*ptr).psy), VorbisLookPsy::default());
             write(addr_of_mut!((*ptr).psy_g_look), VorbisLookPsyGlobal::default());
             write(addr_of_mut!((*ptr).bitrate_manager_state), VorbisBitrateManagerState::default());
             ret_z.assume_init()

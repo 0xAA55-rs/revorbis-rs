@@ -44,13 +44,13 @@ pub struct VorbisResidue {
     pub classmetric2: [i32; 64],
 }
 
-pub struct VorbisLookResidue<'a, 'b> {
+pub struct VorbisLookResidue<'a> {
     info: &'a VorbisResidue,
     parts: i32,
     stages: i32,
-    fullbooks: &'b [CodeBook],
-    phrasebook: &'b CodeBook,
-    partbooks: Vec<Vec<Option<&'b CodeBook>>>,
+    fullbooks: &'a [CodeBook],
+    phrasebook: &'a CodeBook,
+    partbooks: Vec<Vec<Option<&'a CodeBook>>>,
     partvals: i32,
     decodemap: Vec<Vec<i32>>,
     postbits: i32,
@@ -160,7 +160,7 @@ impl VorbisResidue {
     }
 
     /// All borrowing from `vorbis_dsp_state` is marked as `'b`
-    pub fn look<'a, 'b, W>(&'b self, vorbis_dsp_state: &'a VorbisDspState<W>) -> VorbisLookResidue<'b, 'a>
+    pub fn look<'a, W>(&self, vorbis_dsp_state: &VorbisDspState<W>) -> VorbisLookResidue<'a>
     where
         W: Write + Debug
     {
@@ -249,7 +249,7 @@ impl Default for VorbisResidue {
     }
 }
 
-impl<'a, 'b> Debug for VorbisLookResidue<'_, '_> {
+impl Debug for VorbisLookResidue<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("VorbisLookResidue")
         .field("info", &self.info)
@@ -267,7 +267,7 @@ impl<'a, 'b> Debug for VorbisLookResidue<'_, '_> {
     }
 }
 
-impl<'a, 'b> Default for VorbisLookResidue<'_, '_> {
+impl Default for VorbisLookResidue<'_> {
     #[allow(invalid_value)]
     fn default() -> Self {
         unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}

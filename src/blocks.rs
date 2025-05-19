@@ -18,7 +18,7 @@ struct VorbisBlockInternal {
 
 /// Necessary stream state for linking to the framing abstraction
 #[derive(Debug)]
-pub struct VorbisBlock<'a, 'b, 'c, W>
+pub struct VorbisBlock<'a, W>
 where
     W: Write + Debug
 {
@@ -37,7 +37,7 @@ where
     pub sequence: i64,
 
     /// For read-only access of configuration
-    pub vorbis_dsp_state: &'a VorbisDspState<'a, 'b, 'c, W>,
+    pub vorbis_dsp_state: &'a VorbisDspState<'a, W>,
 
     pub glue_bits: i32,
     pub time_bits: i32,
@@ -47,11 +47,12 @@ where
     pub internal: Option<VorbisBlockInternal>,
 }
 
-impl<'a, 'b, 'c, W> VorbisBlock<'a, 'b, 'c, W>
+impl<W> VorbisBlock<'_, W>
 where
     W: Write + Debug
 {
-    pub fn new(vorbis_dsp_state: &'a VorbisDspState<'a, 'b, 'c, W>, writer: W, ogg_stream_id: u32) -> Self {
+    /// All borrowing from `vorbis_dsp_state` is marked as `'b`
+    pub fn new(vorbis_dsp_state: &VorbisDspState<W>, writer: W, ogg_stream_id: u32) -> Self {
         Self {
             ogg_stream_writer: OggStreamWriter::new(writer, ogg_stream_id),
             vorbis_dsp_state,
@@ -69,7 +70,7 @@ where
     }
 }
 
-impl<'a, 'b, 'c, W> Default for VorbisBlock<'a, 'b, 'c, W>
+impl<W> Default for VorbisBlock<'_, W>
 where
     W: Write + Debug
 {

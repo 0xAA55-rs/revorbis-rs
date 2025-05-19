@@ -71,3 +71,66 @@ pub fn toOC(n: f32) -> f32 {
 pub fn fromOC(o: f32) -> f32 {
 	((o + 5.965784) * 0.693147).exp()
 }
+
+#[macro_export]
+macro_rules! unitnorm {
+	($x:expr) => {
+		unitnorm($x as f32)
+	}
+}
+
+#[macro_export]
+macro_rules! todB {
+	($x:expr) => {
+		todB($x as f32)
+	}
+}
+
+#[macro_export]
+macro_rules! fromdB {
+	($x:expr) => {
+		fromdB($x as f32)
+	}
+}
+
+#[macro_export]
+macro_rules! toBARK {
+	($x:expr) => {
+		toBARK($x as f32)
+	}
+}
+
+#[macro_export]
+macro_rules! fromBARK {
+	($x:expr) => {
+		fromBARK($x as f32)
+	}
+}
+
+#[macro_export]
+macro_rules! toMEL {
+	($x:expr) => {
+		toMEL($x as f32)
+	}
+}
+
+#[macro_export]
+macro_rules! fromMEL {
+	($x:expr) => {
+		fromMEL($x as f32)
+	}
+}
+
+#[macro_export]
+macro_rules! toOC {
+	($x:expr) => {
+		toOC($x as f32)
+	}
+}
+
+#[macro_export]
+macro_rules! fromOC {
+	($x:expr) => {
+		fromOC($x as f32)
+	}
+}

@@ -39,11 +39,11 @@ where
 
 		if manager_info.reservoir_bits > 0 {
 			let ratesamples = vorbis_info.sample_rate as f32;
-			let halfsamples = (vorbis_info.block_size[0] >> 1) as f32;
+			let halfsamples = (codec_setup.block_size[0] >> 1) as f32;
 			let desired_fill = (manager_info.reservoir_bits as f64 * manager_info.reservoir_bias) as i32;
 			Self {
 				managed: true,
-				short_per_long: vorbis_info.block_size[1] / vorbis_info.block_size[0],
+				short_per_long: codec_setup.block_size[1] / codec_setup.block_size[0],
 				avg_bitsper: rint!(1.0 * manager_info.avg_rate as f32 * halfsamples / ratesamples),
 				min_bitsper: rint!(1.0 * manager_info.min_rate as f32 * halfsamples / ratesamples),
 				max_bitsper: rint!(1.0 * manager_info.max_rate as f32 * halfsamples / ratesamples),

@@ -22,6 +22,9 @@ use highlevel::HighlevelEncodeSetup;
 /// * VorbisCodecSetup
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct VorbisCodecSetup {
+    /// Vorbis supports only short and long blocks, but allows the encoder to choose the sizes
+    pub block_size: [i32; 2],
+
     /// Static codebooks
     pub static_codebooks: Vec<StaticCodeBook>,
 
@@ -99,7 +102,7 @@ pub struct VorbisInfo {
     pub bitrate_nominal: i32,
     pub bitrate_lower: i32,
     pub bitrate_window: i32,
-    pub block_size: [i32; 2],
+
     pub codec_setup: VorbisCodecSetup,
 }
 
@@ -152,8 +155,8 @@ where
     /// The init is here because some of it is shared
     pub fn new(vorbis_dsp_state: &'a VorbisDspState<'_, W>) -> io::Result<Self> {
         let codec_info = &info.codec_setup;
-        let block_size = [info.block_size[0] as usize, info.block_size[1] as usize];
         let hs = if codec_info.halfrate_flag {1} else {0};
+        let block_size = [codec_setup.block_size[0] as usize, codec_setup.block_size[1] as usize];
 
         assert!(codec_info.modes.len() > 0);
         assert!(block_size[0] >= 64);

@@ -7,7 +7,6 @@ mod floor;
 mod mapping;
 mod residue;
 mod psy;
-mod psych;
 mod psy_masking;
 mod scales;
 mod bitrate;

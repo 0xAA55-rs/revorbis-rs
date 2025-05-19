@@ -208,9 +208,9 @@ fn setup_tone_curves(
            octave values may also be composited. */
 
         /* which octave curves will we be compositing? */
-        let bin = (fromOC(i as f32 * 0.5) / binHz).floor();
-        let lo_curve = ((toOC(bin * binHz + 1.0) * 2.0).ceil() as usize).clamp(0, i);
-        let hi_curve = min((toOC((bin + 1.0) * binHz) * 2.0).floor() as usize, P_BANDS);
+        let bin = (fromOC!(i as f32 * 0.5) / binHz).floor();
+        let lo_curve = ((toOC!(bin * binHz + 1.0) * 2.0).ceil() as usize).clamp(0, i);
+        let hi_curve = min((toOC!((bin + 1.0) * binHz) * 2.0).floor() as usize, P_BANDS);
 
         for m in 0..P_LEVELS {
             let ret_i_m = &mut ret_i[m];
@@ -225,8 +225,8 @@ fn setup_tone_curves(
                 let mut l = 0usize;
 
                 for j in 0..EHMER_MAX {
-                    let lo_bin = ((fromOC(j as f32 * 0.125 + k as f32 * 0.5 - 2.0625) / binHz) as usize + 0).clamp(0, n);
-                    let hi_bin = ((fromOC(j as f32 * 0.125 + k as f32 * 0.5 - 1.9375) / binHz) as usize + 1).clamp(0, n);
+                    let lo_bin = ((fromOC!(j as f32 * 0.125 + k as f32 * 0.5 - 2.0625) / binHz) as usize + 0).clamp(0, n);
+                    let hi_bin = ((fromOC!(j as f32 * 0.125 + k as f32 * 0.5 - 1.9375) / binHz) as usize + 1).clamp(0, n);
                     l = min(l, lo_bin);
 
                     while l < hi_bin && l < n {
@@ -251,7 +251,7 @@ fn setup_tone_curves(
             }
 
             for j in 0..EHMER_MAX {
-                let bin = (fromOC(j as f32 * 0.125 + i as f32 * 0.5 - 2.0) / binHz) as isize;
+                let bin = (fromOC!(j as f32 * 0.125 + i as f32 * 0.5 - 2.0) / binHz) as isize;
                 ret_i_m[j + 2] = if bin < 0 {
                     -999.0
                 } else if bin as usize >= n {

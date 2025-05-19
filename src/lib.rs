@@ -21,6 +21,8 @@ mod vorbisenc;
 pub use utils::*;
 pub use bitwise::*;
 
+pub const PACKETBLOBS: usize = 15;
+
 pub const SHOW_DEBUG: bool = false;
 pub const DEBUG_ON_READ_BITS: bool = false;
 pub const DEBUG_ON_WRITE_BITS: bool = false;

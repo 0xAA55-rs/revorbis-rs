@@ -160,18 +160,6 @@ impl Debug for VorbisResidue {
 
 impl Default for VorbisResidue {
     fn default() -> Self {
-        Self {
-            residue_type: 0,
-            begin: 0,
-            end: 0,
-            grouping: 0,
-            partitions: 0,
-            partvals: 0,
-            groupbook: 0,
-            secondstages: CopiableBuffer::default(),
-            booklist: CopiableBuffer::default(),
-            classmetric1: [0; 64],
-            classmetric2: [0; 64],
-        }
+        unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}
     }
 }

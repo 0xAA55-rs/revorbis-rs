@@ -197,7 +197,7 @@ macro_rules! derive_index {
 #[macro_export]
 macro_rules! rint {
     ($x:expr) => {
-        $x.floor() + 0.5
+        ($x.floor() + 0.5) as i32
     };
 }
 

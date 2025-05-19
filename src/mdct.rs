@@ -1,11 +1,7 @@
 #![allow(dead_code)]
 use std::slice::{from_raw_parts, from_raw_parts_mut};
 
-macro_rules! rint {
-    ($x:expr) => {
-        $x.floor() + 0.5
-    };
-}
+use crate::*;
 
 /// * This is for the modified DCT transform forward and backward
 #[derive(Debug, Default, Clone, PartialEq)]

@@ -194,6 +194,13 @@ macro_rules! derive_index {
     }
 }
 
+#[macro_export]
+macro_rules! rint {
+    ($x:expr) => {
+        $x.floor() + 0.5
+    };
+}
+
 use ogg::{OggPacket, OggPacketType};
 use io_utils::CursorVecU8;
 use vorbis::*;

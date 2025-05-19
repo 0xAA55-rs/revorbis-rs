@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(private_interfaces)]
 use std::{
     fmt::Debug,
     io::Write,
@@ -42,7 +43,7 @@ where
     pub floor_bits: i32,
     pub res_bits: i32,
 
-    internal: Option<VorbisBlockInternal>,
+    pub internal: Option<VorbisBlockInternal>,
 }
 
 impl<'a, 'b, 'c, W> VorbisBlock<'a, 'b, 'c, W>

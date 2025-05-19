@@ -28,3 +28,4 @@ pub const DEBUG_ON_READ_BITS: bool = false;
 pub const DEBUG_ON_WRITE_BITS: bool = false;
 pub const PANIC_ON_ERROR: bool = false;
 
+mod no_usage;

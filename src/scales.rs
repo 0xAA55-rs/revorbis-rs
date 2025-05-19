@@ -11,8 +11,8 @@ pub fn unitnorm(x: f32) -> f32 {
 /// * Convert dB to gain
 #[inline(always)]
 #[allow(non_snake_case)]
-pub fn todB(x: &f32) -> f32 {
-	let mut i: u32 = unsafe {transmute(*x)};
+pub fn todB(x: f32) -> f32 {
+	let mut i: u32 = unsafe {transmute(x)};
 	i &= 0x7FFFFFFF;
 	i as f32 * 7.17711438e-7 - 764.6161886
 }

@@ -1,4 +1,7 @@
-use std::{io::{self, Write}, fmt::{self, Debug, Formatter}};
+use std::{
+    io::{self, Write},
+    fmt::{self, Debug, Formatter},
+};
 
 use crate::*;
 use io_utils::{Writer, CursorVecU8};

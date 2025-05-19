@@ -55,6 +55,32 @@ impl Debug for VorbisInfoPsyGlobal {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VorbisLookPsyGlobal<'a> {
+    ampmax: f32,
+    channels: i32,
+    info_psy_global: &'a VorbisInfoPsyGlobal,
+    coupling_pointlimit: [[i32; P_NOISECURVES]; 2],
+}
+
+impl<'a> VorbisLookPsyGlobal<'a> {
+    pub fn new(ampmax: f32, channels: i32, info_psy_global: &'a VorbisInfoPsyGlobal) -> Self {
+        Self {
+            ampmax,
+            channels,
+            info_psy_global,
+            coupling_pointlimit: [[0; P_NOISECURVES]; 2],
+        }
+    }
+}
+
+impl Default for VorbisLookPsyGlobal<'_> {
+    #[allow(invalid_value)]
+    fn default() -> Self {
+        unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}
+    }
+}
+
 #[derive(Clone, Copy, PartialEq)]
 #[allow(non_snake_case)]
 pub struct VorbisInfoPsy {

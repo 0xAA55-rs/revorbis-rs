@@ -112,6 +112,8 @@ macro_rules! return_Err {
 #[macro_export]
 macro_rules! derive_index {
     ($object:ident, $target:ident, $member:tt) => {
+        use std::ops::{Index, IndexMut, Range, RangeFrom, RangeTo, RangeFull};
+
         impl Index<usize> for $object {
             type Output = $target;
 

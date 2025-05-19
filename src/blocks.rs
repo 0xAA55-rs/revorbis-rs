@@ -25,10 +25,11 @@ where
     pub pcm: Vec<Vec<f32>>,
     pub ogg_stream_writer: OggStreamWriter<W>,
 
-    pub lw: i32,
-    pub w: i32,
-    pub nw: i32,
-    pub pcmend: i32,
+    pub l_w: usize,
+    pub w: usize,
+    pub n_w: usize,
+    pub pcmend: usize,
+
     pub mode: i32,
 
     pub eofflag: bool,

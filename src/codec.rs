@@ -166,12 +166,14 @@ where
 {
     pub envelope: Option<VorbisEnvelopeLookup>,
     pub window: [i32; 2],
-    pub transform: [MdctLookup; 2],
+    pub transform: [[MdctLookup; 2]; 1],
     pub fft_look: Vec<DrftLookup>,
     pub modebits: i32,
 
-    pub psy: VorbisLookPsy<'b>,
-    pub psy_g_look: VorbisLookPsyGlobal<'c>,
+    pub flr_look: Vec<VorbisLookFloor<'a>>,
+    pub residue_look: Vec<VorbisLookResidue<'a>>,
+    pub psy_look: Vec<VorbisLookPsy<'a>>,
+    pub psy_g_look: VorbisLookPsyGlobal<'a>,
 
     pub bitrate_manager_state: VorbisBitrateManagerState<'a, 'b, 'c, W>,
 }
@@ -227,7 +229,7 @@ where
         unsafe {
             let ptr = ret_z.as_mut_ptr();
             write(addr_of_mut!((*ptr).envelope), None);
-            write(addr_of_mut!((*ptr).transform), [MdctLookup::default(), MdctLookup::default()]);
+            write(addr_of_mut!((*ptr).transform), [[MdctLookup::default(), MdctLookup::default()]]);
             write(addr_of_mut!((*ptr).psy), VorbisLookPsy::default());
             write(addr_of_mut!((*ptr).psy_g_look), VorbisLookPsyGlobal::default());
             write(addr_of_mut!((*ptr).bitrate_manager_state), VorbisBitrateManagerState::default());

@@ -69,6 +69,20 @@ pub struct VorbisFloor0 {
     pub greaterthan: f32,
 }
 
+#[derive(Clone, PartialEq)]
+#[allow(non_snake_case)]
+pub struct VorbisLookFloor0<'a> {
+    ln: i32,
+    m: i32,
+    linearmap: Vec<Vec<i32>>,
+    n: [i32; 2],
+
+    info: &'a VorbisFloor0,
+
+    bits: i32,
+    frames: i32,
+}
+
 impl VorbisFloor0 {
     pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<VorbisFloor, io::Error> {
         let static_codebooks = &vorbis_info.static_codebooks;
@@ -118,6 +132,15 @@ impl VorbisFloor0 {
         Ok(0)
     }
 
+    pub fn look(&self) -> VorbisLookFloor0 {
+        VorbisLookFloor0 {
+            ln: self.barkmap,
+            m: self.order,
+            linearmap: Vec::new(),
+            info: &self,
+            ..Default::default()
+        }
+    }
 }
 
 impl Debug for VorbisFloor0 {

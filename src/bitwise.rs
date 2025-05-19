@@ -352,7 +352,7 @@ macro_rules! read_string {
 macro_rules! write_slice {
     ($bitwriter:ident, $data:expr) => {
         for &data in $data.iter() {
-            write_bits!($bitwriter, data, mem::size_of_val(&data) as i32 * 8);
+            write_bits!($bitwriter, data, std::mem::size_of_val(&data) as i32 * 8);
         }
     };
 }

@@ -3,6 +3,7 @@
 use std::{
     fmt::Debug,
     io::Write,
+    rc::Rc,
 };
 
 use crate::*;
@@ -18,7 +19,7 @@ struct VorbisBlockInternal {
 
 /// Necessary stream state for linking to the framing abstraction
 #[derive(Debug)]
-pub struct VorbisBlock<'a, W>
+pub struct VorbisBlock<W>
 where
     W: Write + Debug
 {
@@ -37,7 +38,7 @@ where
     pub sequence: i64,
 
     /// For read-only access of configuration
-    pub vorbis_dsp_state: &'a VorbisDspState<'a, W>,
+    pub vorbis_dsp_state: Rc<VorbisDspState<W>>,
 
     pub glue_bits: i32,
     pub time_bits: i32,
@@ -47,15 +48,14 @@ where
     pub internal: Option<VorbisBlockInternal>,
 }
 
-impl<W> VorbisBlock<'_, W>
+impl<W> VorbisBlock<W>
 where
     W: Write + Debug
 {
-    /// All borrowing from `vorbis_dsp_state` is marked as `'b`
-    pub fn new(vorbis_dsp_state: &VorbisDspState<W>, writer: W, ogg_stream_id: u32) -> Self {
+    pub fn new(vorbis_dsp_state: Rc<VorbisDspState<W>>, writer: W, ogg_stream_id: u32) -> Self {
         Self {
             ogg_stream_writer: OggStreamWriter::new(writer, ogg_stream_id),
-            vorbis_dsp_state,
+            vorbis_dsp_state: vorbis_dsp_state.clone(),
             internal: if vorbis_dsp_state.for_encode {
                 Some(VorbisBlockInternal {
                     pcmdelay: Vec::new(),
@@ -70,7 +70,7 @@ where
     }
 }
 
-impl<W> Default for VorbisBlock<'_, W>
+impl<W> Default for VorbisBlock<W>
 where
     W: Write + Debug
 {

@@ -3,6 +3,7 @@ use std::{
     cmp::{min, max},
     mem,
     fmt::{self, Debug, Formatter},
+    rc::Rc,
 };
 
 use crate::*;
@@ -55,26 +56,26 @@ impl Debug for VorbisInfoPsyGlobal {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct VorbisLookPsyGlobal<'a> {
+#[derive(Debug, Clone, PartialEq)]
+pub struct VorbisLookPsyGlobal {
     ampmax: f32,
     channels: i32,
-    info_psy_global: &'a VorbisInfoPsyGlobal,
+    info_psy_global: Rc<VorbisInfoPsyGlobal>,
     coupling_pointlimit: [[i32; P_NOISECURVES]; 2],
 }
 
-impl<'a> VorbisLookPsyGlobal<'a> {
-    pub fn new(ampmax: f32, channels: i32, info_psy_global: &'a VorbisInfoPsyGlobal) -> Self {
+impl VorbisLookPsyGlobal {
+    pub fn new(ampmax: f32, channels: i32, info_psy_global: Rc<VorbisInfoPsyGlobal>) -> Self {
         Self {
             ampmax,
             channels,
-            info_psy_global,
-            coupling_pointlimit: [[0; P_NOISECURVES]; 2],
+            info_psy_global: info_psy_global.clone(),
+            ..Default::default()
         }
     }
 }
 
-impl Default for VorbisLookPsyGlobal<'_> {
+impl Default for VorbisLookPsyGlobal {
     #[allow(invalid_value)]
     fn default() -> Self {
         unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}
@@ -358,9 +359,9 @@ fn setup_noise_offset(rate: u32, n: usize, vorbis_info_phy: &VorbisInfoPsy) -> V
 
 #[derive(Clone, PartialEq)]
 #[allow(non_snake_case)]
-pub struct VorbisLookPsy<'a> {
+pub struct VorbisLookPsy {
     pub n: usize,
-    pub vorbis_info_phy: &'a VorbisInfoPsy,
+    pub vorbis_info_phy: Rc<VorbisInfoPsy>,
 
     pub tonecurves: Vec<Vec<Vec<f32>>>,
     pub noiseoffset: Vec<Vec<f32>>,
@@ -381,16 +382,16 @@ pub struct VorbisLookPsy<'a> {
     pub m_val: f32,
 }
 
-impl Default for VorbisLookPsy<'_> {
+impl Default for VorbisLookPsy {
     #[allow(invalid_value)]
     fn default() -> Self {
         unsafe {mem::MaybeUninit::zeroed().assume_init()}
     }
 }
 
-impl<'a> VorbisLookPsy<'a> {
+impl VorbisLookPsy {
     pub fn new(
-        vorbis_info_phy: &'a VorbisInfoPsy,
+        vorbis_info_phy: Rc<VorbisInfoPsy>,
         vorbis_info_psy_global: &VorbisInfoPsyGlobal,
         n: usize,
         rate: u32,
@@ -473,7 +474,7 @@ impl<'a> VorbisLookPsy<'a> {
             ath,
             octave,
             bark,
-            vorbis_info_phy,
+            vorbis_info_phy: vorbis_info_phy.clone(),
             n,
             rate,
             m_val,
@@ -484,12 +485,12 @@ impl<'a> VorbisLookPsy<'a> {
                 vorbis_info_phy.tone_centerboost,
                 vorbis_info_phy.tone_decay
             ),
-            noiseoffset: setup_noise_offset(rate, n, vorbis_info_phy),
+            noiseoffset: setup_noise_offset(rate, n, &*vorbis_info_phy),
         }
     }
 }
 
-impl Debug for VorbisLookPsy<'_> {
+impl Debug for VorbisLookPsy {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("VorbisLookPsy")
         .field("n", &self.n)

@@ -3,6 +3,7 @@ use std::{
 	fmt::Debug,
 	mem,
 	io::Write,
+	rc::Rc,
 };
 
 use crate::*;
@@ -10,7 +11,7 @@ use codec::VorbisInfo;
 use blocks::VorbisBlock;
 
 #[derive(Debug, Clone)]
-pub struct VorbisBitrateManagerState<'a, W>
+pub struct VorbisBitrateManagerState<W>
 where
 	W: Write + Debug
 {
@@ -25,11 +26,11 @@ where
 	pub short_per_long: i32,
 	pub avgfloat: f64,
 
-	pub vorbis_block: Option<&'a VorbisBlock<'a, W>>,
+	pub vorbis_block: Option<Rc<VorbisBlock<W>>>,
 	pub choice: i32,
 }
 
-impl<W> VorbisBitrateManagerState<'_, W>
+impl<W> VorbisBitrateManagerState<W>
 where
     W: Write + Debug
 {
@@ -59,7 +60,7 @@ where
 	}
 }
 
-impl<W> Default for VorbisBitrateManagerState<'_, W>
+impl<W> Default for VorbisBitrateManagerState<W>
 where
     W: Write + Debug
 {

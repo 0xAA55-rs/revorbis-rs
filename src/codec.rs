@@ -3,6 +3,8 @@
 use std::{
     io::{self, Write},
     fmt::{self, Debug, Formatter},
+    rc::Rc,
+    cell::RefCell,
 };
 
 use crate::*;
@@ -29,23 +31,23 @@ pub struct VorbisCodecSetup {
     pub static_codebooks: Vec<StaticCodeBook>,
 
     /// Floors
-    pub floors: Vec<VorbisFloor>,
+    pub floors: Vec<Rc<VorbisFloor>>,
 
     /// Residues
-    pub residues: Vec<VorbisResidue>,
+    pub residues: Vec<Rc<VorbisResidue>>,
 
     /// Maps
-    pub maps: Vec<VorbisMapping>,
+    pub maps: Vec<Rc<VorbisMapping>>,
 
     /// Modes
     pub modes: Vec<VorbisMode>,
 
     /// Codebooks
-    pub fullbooks: Vec<CodeBook>,
+    pub fullbooks: Rc<RefCell<Vec<Rc<CodeBook>>>>,
 
     /// Encode only
-    pub psys: [VorbisInfoPsy; 4],
-    pub psy_g: VorbisInfoPsyGlobal,
+    pub psys: [Rc<VorbisInfoPsy>; 4],
+    pub psy_g: Rc<VorbisInfoPsyGlobal>,
 
     pub bitrate_manager_info: VorbisBitrateManagerInfo,
 
@@ -56,30 +58,38 @@ pub struct VorbisCodecSetup {
     pub halfrate_flag: bool,
 }
 
+fn to_vec_rc<T>(src: &[T]) -> Vec<Rc<T>>
+where
+    T: Clone + Sized {
+    src.iter().map(|v|Rc::new(v.clone())).collect()
+}
+
 impl VorbisCodecSetup {
     pub fn new(setup_header: &VorbisSetupHeader) -> io::Result<Self> {
         Ok(Self {
             static_codebooks: setup_header.static_codebooks.clone(),
-            floors: setup_header.floors.clone(),
-            residues: setup_header.residues.clone(),
-            maps: setup_header.maps.clone(),
+            floors: to_vec_rc(&setup_header.floors),
+            residues: to_vec_rc(&setup_header.residues),
+            maps: to_vec_rc(&setup_header.maps),
             modes: setup_header.modes.clone(),
             ..Default::default()
         })
     }
 
     pub fn set_encoder_mode(&mut self) -> io::Result<()> {
-        self.fullbooks.resize(self.static_codebooks.len(), CodeBook::default());
+        let mut fullbooks = self.fullbooks.borrow_mut();
+        fullbooks.resize(self.static_codebooks.len(), Rc::default());
         for (i, static_codebook) in self.static_codebooks.iter().enumerate() {
-            self.fullbooks[i] = CodeBook::new(true, static_codebook)?;
+            fullbooks[i] = Rc::new(CodeBook::new(true, static_codebook)?);
         }
         Ok(())
     }
 
     pub fn set_decoder_mode(&mut self) -> io::Result<()> {
-        self.fullbooks.resize(self.static_codebooks.len(), CodeBook::default());
+        let mut fullbooks = self.fullbooks.borrow_mut();
+        fullbooks.resize(self.static_codebooks.len(), Rc::default());
         for (i, static_codebook) in self.static_codebooks.iter().enumerate() {
-            self.fullbooks[i] = CodeBook::new(false, static_codebook)?;
+            fullbooks[i] = Rc::new(CodeBook::new(false, static_codebook)?);
         }
         Ok(())
     }
@@ -93,7 +103,8 @@ impl VorbisCodecSetup {
         psy_noise_normal_thresh: &[f64],
     ) {
         let hi = &self.highlevel_encode_setup;
-        let psy = &mut self.psys[n];
+        let psy = self.psys[n].clone();
+        let mut psy = *psy;
         psy.block_flag = n as i32 >> 1;
 
         if hi.noise_normalize_p != 0 {
@@ -103,6 +114,7 @@ impl VorbisCodecSetup {
             psy.normal_partition = psy_noise_normal_partition[is];
             psy.normal_thresh = psy_noise_normal_thresh[is];
         }
+        self.psys[n] = Rc::new(psy);
     }
 }
 
@@ -153,14 +165,13 @@ impl VorbisInfo {
 
     pub fn psy_global_look(&self) -> VorbisLookPsyGlobal {
         let codec_setup = &self.codec_setup;
-        let info_psy_global = &codec_setup.psy_g;
-        VorbisLookPsyGlobal::new(-9999.0, self.channels, info_psy_global)
+        VorbisLookPsyGlobal::new(-9999.0, self.channels, codec_setup.psy_g.clone())
     }
 }
 
 /// * The private part of the `VorbisDspState` for `libvorbis-1.3.7`
 #[derive(Debug)]
-struct VorbisDspStatePrivate<'a, W>
+struct VorbisDspStatePrivate<W>
 where
     W: Write + Debug
 {
@@ -170,22 +181,22 @@ where
     pub fft_look: Vec<DrftLookup>,
     pub modebits: i32,
 
-    pub flr_look: Vec<VorbisLookFloor<'a>>,
-    pub residue_look: Vec<VorbisLookResidue<'a>>,
-    pub psy_look: Vec<VorbisLookPsy<'a>>,
-    pub psy_g_look: VorbisLookPsyGlobal<'a>,
+    pub flr_look: Vec<VorbisLookFloor>,
+    pub residue_look: Vec<VorbisLookResidue>,
+    pub psy_look: Vec<VorbisLookPsy>,
+    pub psy_g_look: VorbisLookPsyGlobal,
 
-    pub bitrate_manager_state: VorbisBitrateManagerState<'a, W>,
+    pub bitrate_manager_state: VorbisBitrateManagerState<W>,
 }
 
-impl<'a, W> VorbisDspStatePrivate<'a, W>
+impl<W> VorbisDspStatePrivate<W>
 where
     W: Write + Debug
 {
     /// Analysis side code, but directly related to blocking. Thus it's
     /// here and not in analysis.c (which is for analysis transforms only).
     /// The init is here because some of it is shared
-    pub fn new(vorbis_dsp_state: &'a VorbisDspState<'_, W>) -> io::Result<Self> {
+    pub fn new(vorbis_dsp_state: &VorbisDspState<W>) -> io::Result<Self> {
         let vorbis_info = &vorbis_dsp_state.vorbis_info;
         let codec_setup = &vorbis_info.codec_setup;
         let for_encode = vorbis_dsp_state.for_encode;
@@ -219,19 +230,19 @@ where
         let vorbis_info = &vorbis_dsp_state.vorbis_info;
         let codec_setup = &vorbis_info.codec_setup;
 
-        let mut flr_look = Vec::<VorbisLookFloor<'a>>::with_capacity(codec_setup.floors.len());
-        let mut residue_look = Vec::<VorbisLookResidue<'a>>::with_capacity(codec_setup.residues.len());
-        let mut psy_look = Vec::<VorbisLookPsy<'a>>::with_capacity(codec_setup.psys.len());
+        let mut flr_look = Vec::<VorbisLookFloor>::with_capacity(codec_setup.floors.len());
+        let mut residue_look = Vec::<VorbisLookResidue>::with_capacity(codec_setup.residues.len());
+        let mut psy_look = Vec::<VorbisLookPsy>::with_capacity(codec_setup.psys.len());
         let psy_g_look = vorbis_info.psy_global_look();
 
         for floor in codec_setup.floors.iter() {
-            flr_look.push(floor.look());
+            flr_look.push(VorbisLookFloor::look(floor.clone()));
         }
         for residue in codec_setup.residues.iter() {
-            residue_look.push(residue.look(vorbis_dsp_state));
+            residue_look.push(VorbisLookResidue::look(residue.clone(), vorbis_dsp_state));
         }
         for psy in codec_setup.psys.iter() {
-            psy_look.push(VorbisLookPsy::new(psy, &codec_setup.psy_g, block_size[psy.block_flag as usize] / 2, vorbis_info.sample_rate as u32));
+            psy_look.push(VorbisLookPsy::new(psy.clone(), &*codec_setup.psy_g, block_size[psy.block_flag as usize] / 2, vorbis_info.sample_rate as u32));
         }
 
         Ok(Self {
@@ -248,7 +259,7 @@ where
     }
 }
 
-impl<W> Default for VorbisDspStatePrivate<'_, W>
+impl<W> Default for VorbisDspStatePrivate<W>
 where
     W: Write + Debug
 {
@@ -267,7 +278,7 @@ where
 }
 
 /// * Am I going to reinvent the `libvorbis` wheel myself?
-pub struct VorbisDspState<'a, W>
+pub struct VorbisDspState<W>
 where
     W: Write + Debug
 {
@@ -298,14 +309,14 @@ where
     pub floor_bits: i64,
     pub res_bits: i64,
 
-    pub backend_state: VorbisDspStatePrivate<'a, W>,
+    pub backend_state: VorbisDspStatePrivate<W>,
 }
 
-impl<'a, W> VorbisDspState<'_, W>
+impl<W> VorbisDspState<W>
 where
     W: Write + Debug
 {
-    pub fn new(vorbis_info: VorbisInfo, for_encode: bool) -> io::Result<Self> {
+    pub fn new(vorbis_info: VorbisInfo, for_encode: bool) -> io::Result<Box<Self>> {
         let codec_setup = &vorbis_info.codec_setup;
         let pcm_storage = codec_setup.block_size[1] as usize;
         let pcm = vecvec![[0.0; pcm_storage]; vorbis_info.channels as usize];
@@ -313,7 +324,7 @@ where
         let center_w = (codec_setup.block_size[1] / 2) as usize;
         let pcm_current = center_w;
 
-        let mut ret = Self {
+        let mut ret = Box::new(Self {
             for_encode,
             vorbis_info,
             pcm,
@@ -322,7 +333,7 @@ where
             pcm_current,
             center_w,
             ..Default::default()
-        };
+        });
         ret.backend_state = VorbisDspStatePrivate::new(&ret)?;
         if for_encode {
             ret.vorbis_info.codec_setup.set_encoder_mode()?;
@@ -333,7 +344,7 @@ where
     }
 }
 
-impl<W> Debug for VorbisDspState<'_, W>
+impl<W> Debug for VorbisDspState<W>
 where
     W: Write + Debug
 {
@@ -362,7 +373,7 @@ where
     }
 }
 
-impl<W> Default for VorbisDspState<'_, W>
+impl<W> Default for VorbisDspState<W>
 where
     W: Write + Debug
 {

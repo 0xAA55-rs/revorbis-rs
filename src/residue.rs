@@ -3,6 +3,8 @@ use std::{
     fmt::{self, Debug, Formatter},
     mem,
     io::{self, Write},
+    rc::Rc,
+    cell::RefCell,
 };
 
 use crate::*;
@@ -44,13 +46,13 @@ pub struct VorbisResidue {
     pub classmetric2: [i32; 64],
 }
 
-pub struct VorbisLookResidue<'a> {
-    info: &'a VorbisResidue,
+pub struct VorbisLookResidue {
+    info: Rc<VorbisResidue>,
     parts: i32,
     stages: i32,
-    fullbooks: &'a [CodeBook],
-    phrasebook: &'a CodeBook,
-    partbooks: Vec<Vec<Option<&'a CodeBook>>>,
+    fullbooks: Rc<RefCell<Vec<Rc<CodeBook>>>>,
+    phrasebook: Rc<CodeBook>,
+    partbooks: Vec<Vec<Option<Rc<CodeBook>>>>,
     partvals: i32,
     decodemap: Vec<Vec<i32>>,
     postbits: i32,
@@ -158,33 +160,34 @@ impl VorbisResidue {
 
         Ok(bitwriter.total_bits - begin_bits)
     }
+}
 
-    /// All borrowing from `vorbis_dsp_state` is marked as `'b`
-    pub fn look<'a, W>(&self, vorbis_dsp_state: &VorbisDspState<W>) -> VorbisLookResidue<'a>
+impl VorbisLookResidue {
+    pub fn look<W>(residue: Rc<VorbisResidue>, vorbis_dsp_state: &VorbisDspState<W>) -> VorbisLookResidue
     where
         W: Write + Debug
     {
         let codec_setup = &vorbis_dsp_state.vorbis_info.codec_setup;
-        let fullbooks = &codec_setup.fullbooks;
-        let phrasebook = &codec_setup.fullbooks[self.groupbook as usize];
+        let fullbooks = codec_setup.fullbooks.clone();
+        let phrasebook = fullbooks.borrow()[residue.groupbook as usize].clone();
         let dim = phrasebook.dim as usize;
-        let parts = self.partitions;
+        let parts = residue.partitions;
         let mut maxstage = 0;
         let mut acc = 0;
-        let mut partbooks: Vec<Vec<Option<&CodeBook>>> = (0..parts).map(|_|Vec::default()).collect();
+        let mut partbooks: Vec<Vec<Option<Rc<CodeBook>>>> = (0..parts).map(|_|Vec::default()).collect();
         for j in 0..parts as usize {
-            let secondstage_j = self.secondstages[j];
+            let secondstage_j = residue.secondstages[j];
             let stages = ilog!(secondstage_j);
             if stages != 0 {
                 if stages > maxstage {
                     maxstage = stages;
                 }
                 let partbooks_j = &mut partbooks[j];
-                *partbooks_j = (0..stages).map(|_|Option::<&CodeBook>::None).collect();
+                *partbooks_j = (0..stages).map(|_|Option::<Rc<CodeBook>>::None).collect();
                 for k in 0..stages as usize {
                     let partbooks_j_k = &mut partbooks_j[k];
                     if (secondstage_j & (1 << k)) != 0 {
-                        *partbooks_j_k = Some(&fullbooks[self.booklist[acc] as usize]);
+                        *partbooks_j_k = Some(fullbooks.borrow()[residue.booklist[acc] as usize].clone());
                         acc += 1;
                     }
                 }
@@ -212,7 +215,7 @@ impl VorbisResidue {
         }
 
         VorbisLookResidue {
-            info: &self,
+            info: residue.clone(),
             parts,
             stages: maxstage,
             fullbooks,
@@ -249,7 +252,7 @@ impl Default for VorbisResidue {
     }
 }
 
-impl Debug for VorbisLookResidue<'_> {
+impl Debug for VorbisLookResidue {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("VorbisLookResidue")
         .field("info", &self.info)
@@ -267,7 +270,7 @@ impl Debug for VorbisLookResidue<'_> {
     }
 }
 
-impl Default for VorbisLookResidue<'_> {
+impl Default for VorbisLookResidue {
     #[allow(invalid_value)]
     fn default() -> Self {
         unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}

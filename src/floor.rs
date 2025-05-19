@@ -3,6 +3,7 @@ use std::{
     fmt::{self, Debug, Formatter},
     mem,
     io::{self, Write},
+    rc::Rc,
 };
 
 use crate::*;
@@ -15,18 +16,18 @@ const VIF_CLASS: usize = 16;
 const VIF_PARTS: usize = 31;
 
 /// * The `VorbisFloor` for floor types
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 #[allow(clippy::large_enum_variant)]
 pub enum VorbisFloor {
-    Floor0(VorbisFloor0),
-    Floor1(VorbisFloor1),
+    Floor0(Rc<VorbisFloor0>),
+    Floor1(Rc<VorbisFloor1>),
 }
 
 /// * The `VorbisLookFloor`
 #[derive(Debug, Clone, PartialEq)]
-pub enum VorbisLookFloor<'a> {
-    Floor0(VorbisLookFloor0<'a>),
-    Floor1(VorbisLookFloor1<'a>),
+pub enum VorbisLookFloor {
+    Floor0(VorbisLookFloor0),
+    Floor1(VorbisLookFloor1),
 }
 
 impl VorbisFloor {
@@ -54,28 +55,30 @@ impl VorbisFloor {
             Self::Floor1(floor1) => floor1.pack(bitwriter),
         }
     }
-
-    pub fn look(&self) -> VorbisLookFloor {
-        match self {
-            Self::Floor0(floor0) => VorbisLookFloor::Floor0(floor0.look()),
-            Self::Floor1(floor1) => VorbisLookFloor::Floor1(floor1.look()),
-        }
-    }
 }
 
 impl Default for VorbisFloor {
     fn default() -> Self {
-        Self::Floor0(VorbisFloor0::default())
+        Self::Floor0(Rc::default())
     }
 }
 
-impl Default for VorbisLookFloor<'_> {
+impl VorbisLookFloor {
+    pub fn look(floor: Rc<VorbisFloor>) -> VorbisLookFloor {
+        match *floor {
+            VorbisFloor::Floor0(ref floor0) => Self::Floor0(VorbisLookFloor0::look(floor0.clone())),
+            VorbisFloor::Floor1(ref floor1) => Self::Floor1(VorbisLookFloor1::look(floor1.clone())),
+        }
+    }
+}
+
+impl Default for VorbisLookFloor {
     fn default() -> Self {
         Self::Floor0(VorbisLookFloor0::default())
     }
 }
 
-impl<'a> VorbisLookFloor<'a> {
+impl VorbisLookFloor {
     // TODO
 }
 
@@ -98,13 +101,13 @@ pub struct VorbisFloor0 {
 
 #[derive(Clone, PartialEq)]
 #[allow(non_snake_case)]
-pub struct VorbisLookFloor0<'a> {
+pub struct VorbisLookFloor0 {
     ln: i32,
     m: i32,
     linearmap: Vec<Vec<i32>>,
     n: [i32; 2],
 
-    info: &'a VorbisFloor0,
+    info: Rc<VorbisFloor0>,
 
     bits: i32,
     frames: i32,
@@ -148,7 +151,7 @@ impl VorbisFloor0 {
             ret.books.push(book);
         }
 
-        Ok(VorbisFloor::Floor0(ret))
+        Ok(VorbisFloor::Floor0(Rc::new(ret)))
     }
 
     /// * Pack to the bitstream
@@ -158,13 +161,15 @@ impl VorbisFloor0 {
         // Floor0 never pack.
         Ok(0)
     }
+}
 
-    pub fn look(&self) -> VorbisLookFloor0 {
+impl VorbisLookFloor0 {
+    pub fn look(floor0: Rc<VorbisFloor0>) -> VorbisLookFloor0 {
         VorbisLookFloor0 {
-            ln: self.barkmap,
-            m: self.order,
+            ln: floor0.barkmap,
+            m: floor0.order,
             linearmap: Vec::new(),
-            info: &self,
+            info: floor0.clone(),
             ..Default::default()
         }
     }
@@ -185,7 +190,7 @@ impl Debug for VorbisFloor0 {
     }
 }
 
-impl Debug for VorbisLookFloor0<'_> {
+impl Debug for VorbisLookFloor0 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("VorbisLookFloor0")
         .field("ln", &self.ln)
@@ -244,7 +249,7 @@ pub struct VorbisFloor1 {
 }
 
 #[derive(Clone, PartialEq)]
-pub struct VorbisLookFloor1<'a> {
+pub struct VorbisLookFloor1 {
     sorted_index:  CopiableBuffer<i32, {VIF_POSIT + 2}>,
     forward_index: CopiableBuffer<i32, {VIF_POSIT + 2}>,
     reverse_index: CopiableBuffer<i32, {VIF_POSIT + 2}>,
@@ -255,7 +260,7 @@ pub struct VorbisLookFloor1<'a> {
 
     n: i32,
     quant_q: i32,
-    info: &'a VorbisFloor1,
+    info: Rc<VorbisFloor1>,
 
     phrasebits: i32,
     postbits: i32,
@@ -330,7 +335,7 @@ impl VorbisFloor1 {
             }
         }
 
-        Ok(VorbisFloor::Floor1(ret))
+        Ok(VorbisFloor::Floor1(Rc::new(ret)))
     }
 
     /// * Pack to the bitstream
@@ -370,8 +375,10 @@ impl VorbisFloor1 {
         }
         Ok(bitwriter.total_bits - begin_bits)
     }
+}
 
-    pub fn look(&self) -> VorbisLookFloor1 {
+impl VorbisLookFloor1 {
+    pub fn look(floor1: Rc<VorbisFloor1>) -> VorbisLookFloor1 {
         /* we drop each position value in-between already decoded values,
            and use linear interpolation to predict each new value past the
            edges.  The positions are read in the order of the position
@@ -379,15 +386,15 @@ impl VorbisFloor1 {
            course, the neighbors can change (if a position is declined), but
            this is an initial mapping */
         let mut n = 0usize;
-        for i in 0..self.partitions as usize {
-            n += self.class_dim[self.partitions_class[i] as usize] as usize;
+        for i in 0..floor1.partitions as usize {
+            n += floor1.class_dim[floor1.partitions_class[i] as usize] as usize;
         }
         n += 2;
-        let look_n = self.postlist[1];
+        let look_n = floor1.postlist[1];
 
         // also store a sorted position index
         let mut sort_list: Vec<_> = (0..n as i32).collect();
-        sort_list.sort_by_key(|&i| self.postlist[i as usize]);
+        sort_list.sort_by_key(|&i| floor1.postlist[i as usize]);
 
         let mut sorted_index =  CopiableBuffer::<i32, {VIF_POSIT + 2}>::new();
         let mut forward_index = CopiableBuffer::<i32, {VIF_POSIT + 2}>::new();
@@ -407,10 +414,10 @@ impl VorbisFloor1 {
         }
         // we actually need the post values too
         for i in 0..n {
-            sorted_index[i] = self.postlist[forward_index[i] as usize];
+            sorted_index[i] = floor1.postlist[forward_index[i] as usize];
         }
 
-        let quant_q = match self.mult {
+        let quant_q = match floor1.mult {
             1 => 256,
             2 => 128,
             3 => 86,
@@ -428,9 +435,9 @@ impl VorbisFloor1 {
             let mut hi = 1i32;
             let mut lx = 0;
             let mut hx = look_n;
-            let currentx = self.postlist[i + 2];
+            let currentx = floor1.postlist[i + 2];
             for j in 0..(i + 2) {
-                let x = self.postlist[j];
+                let x = floor1.postlist[j];
                 if ((lx + 1)..currentx).contains(&x) {
                     lo = j as i32;
                     lx = x;
@@ -453,7 +460,7 @@ impl VorbisFloor1 {
             posts: n,
             n: look_n,
             quant_q,
-            info: &self,
+            info: floor1.clone(),
             ..Default::default()
         }
     }
@@ -480,7 +487,7 @@ impl Debug for VorbisFloor1 {
     }
 }
 
-impl Debug for VorbisLookFloor1<'_> {
+impl Debug for VorbisLookFloor1 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("VorbisLookFloor1")
         .field("sorted_index", &format_args!("[{}]", format_array!(self.sorted_index)))
@@ -505,14 +512,14 @@ impl Default for VorbisFloor1 {
     }
 }
 
-impl<'a> Default for VorbisLookFloor0<'_> {
+impl Default for VorbisLookFloor0 {
     #[allow(invalid_value)]
     fn default() -> Self {
         unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}
     }
 }
 
-impl<'a> Default for VorbisLookFloor1<'_> {
+impl Default for VorbisLookFloor1 {
     #[allow(invalid_value)]
     fn default() -> Self {
         unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}

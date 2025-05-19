@@ -38,7 +38,7 @@ pub struct VorbisCodecSetup {
     pub modes: Vec<VorbisMode>,
 
     /// Codebooks
-    pub codebooks: Vec<CodeBook>,
+    pub fullbooks: Vec<CodeBook>,
 
     /// Encode only
     pub psys: [VorbisInfoPsy; 4],
@@ -52,9 +52,9 @@ pub struct VorbisCodecSetup {
 
 impl VorbisCodecSetup {
     pub fn new(setup_header: &VorbisSetupHeader, for_encode: bool) -> Result<Self, io::Error> {
-        let mut codebooks = Vec::<CodeBook>::with_capacity(setup_header.static_codebooks.len());
+        let mut fullbooks = Vec::<CodeBook>::with_capacity(setup_header.static_codebooks.len());
         for book in setup_header.static_codebooks.iter() {
-            codebooks.push(CodeBook::new(for_encode, book)?);
+            fullbooks.push(CodeBook::new(for_encode, book)?);
         }
         Ok(Self {
             static_codebooks: setup_header.static_codebooks.clone(),
@@ -62,7 +62,7 @@ impl VorbisCodecSetup {
             residues: setup_header.residues.clone(),
             maps: setup_header.maps.clone(),
             modes: setup_header.modes.clone(),
-            codebooks,
+            fullbooks,
             ..Default::default()
         })
     }

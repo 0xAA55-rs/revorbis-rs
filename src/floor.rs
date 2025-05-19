@@ -22,6 +22,13 @@ pub enum VorbisFloor {
     Floor1(VorbisFloor1),
 }
 
+/// * The `VorbisLookFloor`
+#[derive(Debug, Clone, PartialEq)]
+pub enum VorbisLookFloor<'a> {
+    Floor0(VorbisLookFloor0<'a>),
+    Floor1(VorbisLookFloor1<'a>),
+}
+
 impl VorbisFloor {
     pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<VorbisFloor, io::Error> {
         let floor_type = read_bits!(bitreader, 16);
@@ -47,12 +54,29 @@ impl VorbisFloor {
             Self::Floor1(floor1) => floor1.pack(bitwriter),
         }
     }
+
+    pub fn look(&self) -> VorbisLookFloor {
+        match self {
+            Self::Floor0(floor0) => VorbisLookFloor::Floor0(floor0.look()),
+            Self::Floor1(floor1) => VorbisLookFloor::Floor1(floor1.look()),
+        }
+    }
 }
 
 impl Default for VorbisFloor {
     fn default() -> Self {
         Self::Floor0(VorbisFloor0::default())
     }
+}
+
+impl Default for VorbisLookFloor<'_> {
+    fn default() -> Self {
+        Self::Floor0(VorbisLookFloor0::default())
+    }
+}
+
+impl<'a> VorbisLookFloor<'a> {
+    // TODO
 }
 
 #[derive(Default, Clone, Copy, PartialEq)]

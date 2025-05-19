@@ -285,6 +285,27 @@ fn setup_tone_curves(
     ret
 }
 
+fn setup_noise_offset(rate: u32, n: usize, vorbis_info_phy: &VorbisInfoPsy) -> Vec<Vec<f32>> {
+    let mut ret = vecvec![[0.0; n]; P_NOISECURVES];
+
+    for i in 0..n {
+        let halfoc = (toOC!((i as f32 + 0.5) * rate as f32 / (2.0 * n as f32)) * 2.0).clamp(0.0, (P_BANDS - 1) as f32);
+        let inthalfoc = halfoc as i32;
+        let del = halfoc - inthalfoc as f32;
+
+        for j in 0..P_NOISECURVES {
+            let inthalfoc = inthalfoc as usize;
+            let ret_j = &mut ret[j];
+            let src_j = &vorbis_info_phy.noiseoff[j];
+            ret_j[i] =
+                src_j[inthalfoc] * (1.0 - del) +
+                src_j[inthalfoc + 1] * del;
+        }
+    }
+
+    ret
+}
+
 
 #[derive(Clone, PartialEq)]
 #[allow(non_snake_case)]

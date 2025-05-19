@@ -201,6 +201,13 @@ macro_rules! rint {
     };
 }
 
+#[macro_export]
+macro_rules! vecvec {
+    [[$val:expr; $len1:expr]; $len2:expr] => {
+        (0..$len2).map(|_|vec![$val; $len1]).collect::<Vec<_>>()
+    }
+}
+
 use ogg::{OggPacket, OggPacketType};
 use io_utils::CursorVecU8;
 use vorbis::*;

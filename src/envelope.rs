@@ -1,5 +1,6 @@
 #![allow(dead_code)]
-use crate::mdct::MdctLookup;
+use crate::*;
+use mdct::MdctLookup;
 use codec::VorbisInfo;
 use copiablebuf::CopiableBuffer;
 

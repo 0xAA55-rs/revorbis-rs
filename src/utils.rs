@@ -33,6 +33,9 @@ macro_rules! format_array {
     ($data:expr, hex8arr) => {
         format_array!($data, ", ", "0x{:08x}")
     };
+    ($data:expr, debug) => {
+        format_array!($data, ", ", "{:?}")
+    };
     ($data:expr, $delims:expr, $($arg:tt)*) => {
         $data.iter().map(|&v|format!($($arg)*, v)).collect::<Vec<_>>().join($delims)
     };

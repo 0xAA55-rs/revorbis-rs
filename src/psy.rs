@@ -84,7 +84,7 @@ impl Default for VorbisLookPsyGlobal<'_> {
 #[derive(Clone, Copy, PartialEq)]
 #[allow(non_snake_case)]
 pub struct VorbisInfoPsy {
-    pub block_flag: bool,
+    pub block_flag: i32,
 
     pub ath_adjatt: f32,
     pub ath_maxatt: f32,

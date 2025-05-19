@@ -217,6 +217,25 @@ pub struct VorbisFloor1 {
     pub n: i32,
 }
 
+#[derive(Clone, PartialEq)]
+pub struct VorbisLookFloor1<'a> {
+    sorted_index:  CopiableBuffer<i32, {VIF_POSIT + 2}>,
+    forward_index: CopiableBuffer<i32, {VIF_POSIT + 2}>,
+    reverse_index: CopiableBuffer<i32, {VIF_POSIT + 2}>,
+
+    hineighbor: CopiableBuffer<i32, VIF_POSIT>,
+    loneighbor: CopiableBuffer<i32, VIF_POSIT>,
+    posts: usize,
+
+    n: i32,
+    quant_q: i32,
+    info: &'a VorbisFloor1,
+
+    phrasebits: i32,
+    postbits: i32,
+    frames: i32,
+}
+
 impl VorbisFloor1 {
     pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<VorbisFloor, io::Error> {
         let static_codebooks = &vorbis_info.static_codebooks;
@@ -324,6 +343,93 @@ impl VorbisFloor1 {
             }
         }
         Ok(bitwriter.total_bits - begin_bits)
+    }
+
+    pub fn look(&self) -> VorbisLookFloor1 {
+        /* we drop each position value in-between already decoded values,
+           and use linear interpolation to predict each new value past the
+           edges.  The positions are read in the order of the position
+           list... we precompute the bounding positions in the lookup.  Of
+           course, the neighbors can change (if a position is declined), but
+           this is an initial mapping */
+        let mut n = 0usize;
+        for i in 0..self.partitions as usize {
+            n += self.class_dim[self.partitions_class[i] as usize] as usize;
+        }
+        n += 2;
+        let look_n = self.postlist[1];
+
+        // also store a sorted position index
+        let mut sort_list: Vec<_> = (0..n as i32).collect();
+        sort_list.sort_by_key(|&i| self.postlist[i as usize]);
+
+        let mut sorted_index =  CopiableBuffer::<i32, {VIF_POSIT + 2}>::new();
+        let mut forward_index = CopiableBuffer::<i32, {VIF_POSIT + 2}>::new();
+        let mut reverse_index = CopiableBuffer::<i32, {VIF_POSIT + 2}>::new();
+
+        sorted_index.resize(n, 0);
+        forward_index.resize(n, 0);
+        reverse_index.resize(n, 0);
+
+        // points from sort order back to range number
+        for i in 0..n {
+            forward_index[i] = sort_list[i];
+        }
+        // points from range order to sorted position
+        for i in 0..n {
+            reverse_index[forward_index[i] as usize] = i as i32;
+        }
+        // we actually need the post values too
+        for i in 0..n {
+            sorted_index[i] = self.postlist[forward_index[i] as usize];
+        }
+
+        let quant_q = match self.mult {
+            1 => 256,
+            2 => 128,
+            3 => 86,
+            4 => 64,
+            _ => unreachable!(),
+        };
+
+        let mut loneighbor = CopiableBuffer::<i32, VIF_POSIT>::new();
+        let mut hineighbor = CopiableBuffer::<i32, VIF_POSIT>::new();
+
+        /* discover our neighbors for decode where we don't use fit flags
+           (that would push the neighbors outward) */
+        for i in 0..(n - 2) {
+            let mut lo = 0i32;
+            let mut hi = 1i32;
+            let mut lx = 0;
+            let mut hx = look_n;
+            let currentx = self.postlist[i + 2];
+            for j in 0..(i + 2) {
+                let x = self.postlist[j];
+                if ((lx + 1)..currentx).contains(&x) {
+                    lo = j as i32;
+                    lx = x;
+                }
+                if ((currentx + 1)..hx).contains(&x) {
+                    hi = j as i32;
+                    hx = x;
+                }
+            }
+            loneighbor.push(lo);
+            hineighbor.push(hi);
+        }
+
+        VorbisLookFloor1 {
+            sorted_index,
+            forward_index,
+            reverse_index,
+            hineighbor,
+            loneighbor,
+            posts: n,
+            n: look_n,
+            quant_q,
+            info: &self,
+            ..Default::default()
+        }
     }
 }
 

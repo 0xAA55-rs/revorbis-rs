@@ -1,5 +1,8 @@
-mod bitwise;
 mod utils;
+mod bitwise;
+mod scales;
+mod mdct;
+mod drft;
 
 mod headers;
 mod codec;
@@ -10,10 +13,7 @@ mod mapping;
 mod residue;
 mod psy;
 mod psy_masking;
-mod scales;
 mod bitrate;
-mod mdct;
-mod drft;
 mod envelope;
 
 mod vorbisenc;

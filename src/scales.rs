@@ -36,7 +36,7 @@ pub fn fromdB(x: f32) -> f32 {
 #[inline(always)]
 #[allow(non_snake_case)]
 pub fn toBARK(n: f32) -> f32 {
-	13.1 * (n * 0.00074).atan()+2.24 * (n * n * 1.85e-8).atan() + 1e-4 * n
+	13.1 * (n * 0.00074).atan() + 2.24 * (n * n * 1.85e-8).atan() + 1e-4 * n
 }
 
 #[inline(always)]

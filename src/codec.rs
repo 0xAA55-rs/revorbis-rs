@@ -48,8 +48,11 @@ pub struct VorbisCodecSetup {
     pub psy_g: VorbisInfoPsyGlobal,
 
     pub bitrate_manager_info: VorbisBitrateManagerInfo,
+
+    /// used only by vorbisenc.c. It's a highly redundant structure, but improves clarity of program flow.
     pub highlevel_encode_setup: HighlevelEncodeSetup,
 
+    /// painless downsample for decode
     pub halfrate_flag: bool,
 }
 
@@ -98,6 +101,22 @@ pub struct VorbisInfo {
     pub version: i32,
     pub channels: i32,
     pub sample_rate: i32,
+
+    /* The below bitrate declarations are *hints*.
+       Combinations of the three values carry the following implications:
+
+       all three set to the same value:
+         implies a fixed rate bitstream
+       only nominal set:
+         implies a VBR stream that averages the nominal bitrate.  No hard
+         upper/lower limit
+       upper and or lower set:
+         implies a VBR bitstream that obeys the bitrate limits. nominal
+         may also be set to give a nominal rate.
+       none set:
+         the coder does not care to speculate.
+    */
+
     pub bitrate_upper: i32,
     pub bitrate_nominal: i32,
     pub bitrate_lower: i32,

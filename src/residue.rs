@@ -159,6 +159,7 @@ impl VorbisResidue {
         Ok(bitwriter.total_bits - begin_bits)
     }
 
+    /// All borrowing from `vorbis_dsp_state` is marked as `'b`
     pub fn look<'a, 'b, W>(&'b self, vorbis_dsp_state: &'a VorbisDspState<W>) -> VorbisLookResidue<'b, 'a>
     where
         W: Write + Debug

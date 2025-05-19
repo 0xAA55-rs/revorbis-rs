@@ -1,12 +1,16 @@
 #![allow(dead_code)]
 use std::{
     fmt::{self, Debug, Formatter},
+    mem,
     io::{self, Write},
 };
 
 use crate::*;
+use utils::NestVecFormatter;
+use codec::VorbisDspState;
 use bitwise::{BitReader, BitWriter};
 use headers::VorbisSetupHeader;
+use codebook::CodeBook;
 use copiablebuf::CopiableBuffer;
 
 /// * block-partitioned VQ coded straight residue
@@ -38,6 +42,20 @@ pub struct VorbisResidue {
 
     pub classmetric1: [i32; 64],
     pub classmetric2: [i32; 64],
+}
+
+pub struct VorbisLookResidue<'a, 'b> {
+    info: &'a VorbisResidue,
+    parts: i32,
+    stages: i32,
+    fullbooks: &'b [CodeBook],
+    phrasebook: &'b CodeBook,
+    partbooks: Vec<Vec<Option<&'b CodeBook>>>,
+    partvals: i32,
+    decodemap: Vec<Vec<i32>>,
+    postbits: i32,
+    phrasebits: i32,
+    frames: i32,
 }
 
 impl VorbisResidue {
@@ -140,6 +158,72 @@ impl VorbisResidue {
 
         Ok(bitwriter.total_bits - begin_bits)
     }
+
+    pub fn look<'a, 'b, W>(&'b self, vorbis_dsp_state: &'a VorbisDspState<W>) -> VorbisLookResidue<'b, 'a>
+    where
+        W: Write + Debug
+    {
+        let codec_setup = &vorbis_dsp_state.info.codec_setup;
+        let fullbooks = &codec_setup.fullbooks;
+        let phrasebook = &codec_setup.fullbooks[self.groupbook as usize];
+        let dim = phrasebook.dim as usize;
+        let parts = self.partitions;
+        let mut maxstage = 0;
+        let mut acc = 0;
+        let mut partbooks: Vec<Vec<Option<&CodeBook>>> = (0..parts).map(|_|Vec::default()).collect();
+        for j in 0..parts as usize {
+            let secondstage_j = self.secondstages[j];
+            let stages = ilog!(secondstage_j);
+            if stages != 0 {
+                if stages > maxstage {
+                    maxstage = stages;
+                }
+                let partbooks_j = &mut partbooks[j];
+                *partbooks_j = (0..stages).map(|_|Option::<&CodeBook>::None).collect();
+                for k in 0..stages as usize {
+                    let partbooks_j_k = &mut partbooks_j[k];
+                    if (secondstage_j & (1 << k)) != 0 {
+                        *partbooks_j_k = Some(&fullbooks[self.booklist[acc] as usize]);
+                        acc += 1;
+                    }
+                }
+            }
+        }
+
+        let mut partvals = 1;
+        for _ in 0..dim {
+            partvals *= parts;
+        }
+
+        let mut decodemap: Vec<Vec<i32>> = (0..partvals).map(|_|Vec::default()).collect();
+        for j in 0..partvals as usize {
+            let mut val = j as i32;
+            let mut mult = partvals as i32 / parts;
+            let decodemap_j = &mut decodemap[j];
+            *decodemap_j = vec![0; dim];
+            for k in 0..dim {
+                let decodemap_j_k = &mut decodemap_j[k];
+                let deco = val / mult;
+                val -= deco * mult;
+                mult /= parts;
+                *decodemap_j_k = deco;
+            }
+        }
+
+        VorbisLookResidue {
+            info: &self,
+            parts,
+            stages: maxstage,
+            fullbooks,
+            phrasebook,
+            partbooks,
+            partvals,
+            decodemap,
+            postbits: 0,
+            phrasebits: 0,
+            frames: 0,
+        }
+    }
 }
 
 impl Debug for VorbisResidue {
@@ -159,6 +243,31 @@ impl Debug for VorbisResidue {
 }
 
 impl Default for VorbisResidue {
+    fn default() -> Self {
+        unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}
+    }
+}
+
+impl<'a, 'b> Debug for VorbisLookResidue<'_, '_> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("VorbisLookResidue")
+        .field("info", &self.info)
+        .field("parts", &self.parts)
+        .field("stages", &self.stages)
+        .field("fullbooks", &self.fullbooks)
+        .field("phrasebook", &self.phrasebook)
+        .field("partbooks", &self.partbooks)
+        .field("partvals", &self.partvals)
+        .field("decodemap", &NestVecFormatter::new_level1(&self.decodemap))
+        .field("postbits", &self.postbits)
+        .field("phrasebits", &self.phrasebits)
+        .field("frames", &self.frames)
+        .finish()
+    }
+}
+
+impl<'a, 'b> Default for VorbisLookResidue<'_, '_> {
+    #[allow(invalid_value)]
     fn default() -> Self {
         unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}
     }

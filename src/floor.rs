@@ -454,6 +454,25 @@ impl Debug for VorbisFloor1 {
     }
 }
 
+impl Debug for VorbisLookFloor1<'_> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("VorbisLookFloor1")
+        .field("sorted_index", &format_args!("[{}]", format_array!(self.sorted_index)))
+        .field("forward_index", &format_args!("[{}]", format_array!(self.forward_index)))
+        .field("reverse_index", &format_args!("[{}]", format_array!(self.reverse_index)))
+        .field("hineighbor", &format_args!("[{}]", format_array!(self.hineighbor)))
+        .field("loneighbor", &format_args!("[{}]", format_array!(self.loneighbor)))
+        .field("posts", &self.posts)
+        .field("n", &self.n)
+        .field("quant_q", &self.quant_q)
+        .field("info", &self.info)
+        .field("phrasebits", &self.phrasebits)
+        .field("postbits", &self.postbits)
+        .field("frames", &self.frames)
+        .finish()
+    }
+}
+
 impl Default for VorbisFloor1 {
     fn default() -> Self {
         Self {

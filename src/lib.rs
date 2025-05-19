@@ -15,6 +15,7 @@ mod psy;
 mod psy_masking;
 mod bitrate;
 mod envelope;
+mod highlevel;
 
 mod vorbisenc;
 

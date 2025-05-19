@@ -211,8 +211,16 @@ macro_rules! vecvec {
     }
 }
 
+#[macro_export]
+macro_rules! field {
+    ($prev:ident, $self:ident, $field:tt) => {
+        $prev.field(stringify!($field), &$self.$field)
     }
 }
 
+#[macro_export]
+macro_rules! field_array {
+    ($prev:ident, $self:ident, $field:tt) => {
+        $prev.field(stringify!($field), &format_args!("[{}]", format_array!($self.$field)))
     }
 }

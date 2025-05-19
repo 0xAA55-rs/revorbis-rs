@@ -10,11 +10,11 @@ macro_rules! rint {
 /// * This is for the modified DCT transform forward and backward
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct MdctLookup {
-    n: usize,
-    log2n: i32,
-    trig: Vec<f32>,
-    bitrev: Vec<i32>,
-    scale: f32,
+    pub n: usize,
+    pub log2n: i32,
+    pub trig: Vec<f32>,
+    pub bitrev: Vec<i32>,
+    pub scale: f32,
 }
 
 const COS_PI3_8: f32 = 0.3826834323650897717284599840304; // (std::f32::consts::PI * 3.0 / 8.0).cos();

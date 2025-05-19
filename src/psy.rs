@@ -289,26 +289,26 @@ fn setup_tone_curves(
 #[derive(Clone, PartialEq)]
 #[allow(non_snake_case)]
 pub struct VorbisLookPsy<'a> {
-    n: usize,
-    vorbis_info_phy: &'a VorbisInfoPsy,
+    pub n: usize,
+    pub vorbis_info_phy: &'a VorbisInfoPsy,
 
-    tonecurves: Vec<Vec<Vec<f32>>>,
-    noiseoffset: Vec<Vec<f32>>,
+    pub tonecurves: Vec<Vec<Vec<f32>>>,
+    pub noiseoffset: Vec<Vec<f32>>,
 
-    ath: Vec<f32>,
+    pub ath: Vec<f32>,
 
     /// in n.ocshift format
-    octave: Vec<i32>,
-    bark: Vec<i32>,
+    pub octave: Vec<i32>,
+    pub bark: Vec<i32>,
 
-    firstoc: i32,
-    shiftoc: i32,
-    eighth_octave_lines: i32,
-    total_octave_lines: i32,
-    rate: i32,
+    pub firstoc: i32,
+    pub shiftoc: i32,
+    pub eighth_octave_lines: i32,
+    pub total_octave_lines: i32,
+    pub rate: u32,
 
     /// Masking compensation value
-    m_val: f32,
+    pub m_val: f32,
 }
 
 impl<'a> VorbisLookPsy<'a> {

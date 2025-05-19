@@ -24,7 +24,7 @@ impl MdctLookup {
         let n2 = n >> 1;
         let n4 = n >> 2;
         let n8 = n >> 3;
-        let log2n = rint!((n as f32).ln() / 2.0_f32.ln()) as i32;
+        let log2n = rint!((n as f32).ln() / 2.0_f32.ln());
         let mut bitrev = vec![0; n4];
         let mut trig = vec![0.0f32; n + n4];
 

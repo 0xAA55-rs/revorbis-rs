@@ -1,5 +1,6 @@
 use crate::*;
-use vorbis::*;
+use codec::VorbisInfo;
+use blocks::VorbisBlock;
 
 #[derive(Debug, Clone)]
 pub struct VorbisBitrateManagerState<'a> {

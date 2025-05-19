@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::*;
-use vorbis::VorbisSetupHeader;
+use headers::VorbisSetupHeader;
 use copiablebuf::CopiableBuffer;
 
 const VIF_POSIT: usize = 63;

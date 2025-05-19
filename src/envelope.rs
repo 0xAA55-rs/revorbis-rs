@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::mdct::MdctLookup;
-use crate::vorbis::VorbisInfo;
+use codec::VorbisInfo;
 use copiablebuf::CopiableBuffer;
 
 pub const VE_PRE: usize = 16;

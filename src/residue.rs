@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::*;
-use vorbis::VorbisSetupHeader;
+use headers::VorbisSetupHeader;
 use copiablebuf::CopiableBuffer;
 
 /// * block-partitioned VQ coded straight residue

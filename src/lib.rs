@@ -1,7 +1,9 @@
-mod vorbis;
 mod bitwise;
 mod utils;
 
+mod headers;
+mod codec;
+mod blocks;
 mod codebook;
 mod floor;
 mod mapping;

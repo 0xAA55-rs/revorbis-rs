@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::*;
-use vorbis::{VorbisSetupHeader, VorbisIdentificationHeader};
+use headers::{VorbisSetupHeader, VorbisIdentificationHeader};
 use copiablebuf::CopiableBuffer;
 
 #[derive(Clone, Copy, PartialEq, Eq)]

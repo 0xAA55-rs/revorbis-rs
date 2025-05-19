@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 use crate::*;
-use vorbis::*;
-use psych::*;
+use headers::VorbisMode;
 use psy_masking::*;
 use floor::*;
 use codebook::StaticCodeBook;

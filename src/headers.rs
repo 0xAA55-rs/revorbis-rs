@@ -1,23 +1,15 @@
-use std::{
-    io::{self, Write},
-    mem,
-    ops::{Index, IndexMut, Range, RangeFrom, RangeTo, RangeFull},
-};
+#![allow(dead_code)]
+use std::io::{self, Write};
 
 use crate::*;
 
-use codebook::{StaticCodeBook, CodeBook};
+use ogg::OggPacket;
+use io_utils::CursorVecU8;
+use bitwise::{BitReader, BitWriter};
+use codebook::StaticCodeBook;
 use floor::VorbisFloor;
-use mapping::VorbisMapping;
 use residue::VorbisResidue;
-use psy::{VorbisInfoPsy, VorbisLookPsy};
-use psych::VorbisInfoPsyGlobal;
-use envelope::VorbisEnvelopeLookup;
-use mdct::MdctLookup;
-use drft::DrftLookup;
-use copiablebuf::CopiableBuffer;
-
-pub const PACKETBLOBS: usize = 15;
+use mapping::VorbisMapping;
 
 /// * The `VorbisIdentificationHeader` is the Vorbis identification header, the first header
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -345,169 +337,52 @@ impl VorbisSetupHeader {
     }
 }
 
-/// * VorbisCodecSetup
-#[derive(Debug, Default, Clone, PartialEq)]
-pub struct VorbisCodecSetup {
-    /// Static codebooks
-    pub static_codebooks: Vec<StaticCodeBook>,
+/// * This function extracts data from some Ogg packets, the packets contains the Vorbis headers.
+/// * There are 3 kinds of Vorbis headers, they are the identification header, the metadata header, and the setup header.
+#[allow(clippy::type_complexity)]
+pub fn get_vorbis_headers_from_ogg_packet_bytes(data: &[u8], stream_id: &mut u32) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), io::Error> {
+    let mut cursor = CursorVecU8::new(data.to_vec());
+    let ogg_packets = OggPacket::from_cursor(&mut cursor);
 
-    /// Floors
-    pub floors: Vec<VorbisFloor>,
+    let mut ident_header = Vec::<u8>::new();
+    let mut metadata_header = Vec::<u8>::new();
+    let mut setup_header = Vec::<u8>::new();
 
-    /// Residues
-    pub residues: Vec<VorbisResidue>,
-
-    /// Maps
-    pub maps: Vec<VorbisMapping>,
-
-    /// Modes
-    pub modes: Vec<VorbisMode>,
-
-    /// Codebooks
-    pub codebooks: Vec<CodeBook>,
-
-    /// Encode only
-    pub psys: CopiableBuffer<VorbisInfoPsy, 4>,
-    pub psy_g: VorbisInfoPsyGlobal,
-
-    pub halfrate_flag: bool,
-}
-
-impl VorbisCodecSetup {
-    pub fn new(setup_header: &VorbisSetupHeader, for_encode: bool) -> Result<Self, io::Error> {
-        let mut codebooks = Vec::<CodeBook>::with_capacity(setup_header.static_codebooks.len());
-        for book in setup_header.static_codebooks.iter() {
-            codebooks.push(CodeBook::new(for_encode, book)?);
-        }
-        Ok(Self {
-            static_codebooks: setup_header.static_codebooks.clone(),
-            floors: setup_header.floors.clone(),
-            residues: setup_header.residues.clone(),
-            maps: setup_header.maps.clone(),
-            modes: setup_header.modes.clone(),
-            codebooks,
-            ..Default::default()
-        })
-    }
-}
-
-/// * The `VorbisInfo` structure
-#[derive(Debug, Default, Clone, PartialEq)]
-pub struct VorbisInfo {
-    pub version: i32,
-    pub channels: i32,
-    pub sample_rate: i32,
-    pub bitrate_upper: i32,
-    pub bitrate_nominal: i32,
-    pub bitrate_lower: i32,
-    pub bitrate_window: i32,
-    pub block_size: [i32; 2],
-    pub codec_setup: VorbisCodecSetup,
-}
-
-impl VorbisInfo {
-    pub fn new(identification_header: &VorbisIdentificationHeader, codec_setup: &VorbisCodecSetup) -> Self {
-        Self {
-            version: identification_header.version,
-            channels: identification_header.channels,
-            sample_rate: identification_header.sample_rate,
-            bitrate_upper: identification_header.bitrate_upper,
-            bitrate_nominal: identification_header.bitrate_nominal,
-            bitrate_lower: identification_header.bitrate_lower,
-            bitrate_window: 0,
-            block_size: identification_header.block_size,
-            codec_setup: codec_setup.clone()
+    // Parse the body of the Ogg Stream.
+    // The body consists of a table and segments of data. The table describes the length of each segment of data
+    // The Vorbis header must occur at the beginning of a segment
+    // And if the header is long enough, it crosses multiple segments
+    let mut cur_segment_type = 0;
+    for packet in ogg_packets.iter() {
+        for segment in packet.get_segments().iter() {
+            if segment[1..7] == *b"vorbis" && [1, 3, 5].contains(&segment[0]) {
+                cur_segment_type = segment[0];
+            } // Otherwise it's not a Vorbis header
+            match cur_segment_type {
+                1 => ident_header.extend(segment),
+                3 => metadata_header.extend(segment),
+                5 => setup_header.extend(segment),
+                o => return_Err!(io::Error::new(io::ErrorKind::InvalidData, format!("Invalid Vorbis header type {o}"))),
+            }
         }
     }
+
+    *stream_id = ogg_packets[0].stream_id;
+    Ok((ident_header, metadata_header, setup_header))
 }
 
-/// * The private part of the `VorbisDspState` for `libvorbis-1.3.7`
-#[derive(Debug, Default, Clone, PartialEq)]
-struct VorbisDspStatePrivate {
-    envelope: Option<VorbisEnvelopeLookup>,
-    window: [i32; 2],
-    transform: [MdctLookup; 2],
-    fft_look: [DrftLookup; 2],
-    modebits: i32,
+/// * This function extracts data from Ogg packets, the packets contains the Vorbis header.
+/// * The packets were all decoded.
+pub fn parse_vorbis_headers(data: &[u8], stream_id: &mut u32) -> (VorbisIdentificationHeader, VorbisCommentHeader, VorbisSetupHeader) {
+    let (b1, b2, b3) = get_vorbis_headers_from_ogg_packet_bytes(data, stream_id).unwrap();
+    debugln!("b1 = [{}]", format_array!(b1, " ", "{:02x}"));
+    debugln!("b2 = [{}]", format_array!(b2, " ", "{:02x}"));
+    debugln!("b3 = [{}]", format_array!(b3, " ", "{:02x}"));
+    let mut br1 = BitReader::new(&b1);
+    let mut br2 = BitReader::new(&b2);
+    let mut br3 = BitReader::new(&b3);
+    let h1 = VorbisIdentificationHeader::load(&mut br1).unwrap();
+    let h2 = VorbisCommentHeader::load(&mut br2).unwrap();
+    let h3 = VorbisSetupHeader::load(&mut br3, &h1).unwrap();
+    (h1, h2, h3)
 }
-
-impl VorbisDspStatePrivate{
-    /// Analysis side code, but directly related to blocking. Thus it's
-    /// here and not in analysis.c (which is for analysis transforms only).
-    /// The init is here because some of it is shared
-    pub fn new(info: &mut VorbisInfo, for_encode: bool) -> Result<Self, io::Error> {
-        let codec_info = &info.codec_setup;
-        let block_size = [info.block_size[0] as usize, info.block_size[1] as usize];
-        let hs = if codec_info.halfrate_flag {1} else {0};
-
-        assert!(codec_info.modes.len() > 0);
-        assert!(block_size[0] >= 64);
-        assert!(block_size[1] >= block_size[0]);
-
-        let mut ret = Self {
-            envelope: None,
-            modebits: ilog!(codec_info.modes.len() - 1),
-            window: [
-                ilog!(block_size[0]) - 7,
-                ilog!(block_size[1]) - 7
-            ],
-            /* MDCT is tranform 0 */
-            transform: [
-                MdctLookup::new(block_size[0] >> hs),
-                MdctLookup::new(block_size[1] >> hs)
-            ],
-            ..Default::default()
-        };
-
-        if for_encode {
-            ret.fft_look = [
-                DrftLookup::new(block_size[0]),
-                DrftLookup::new(block_size[1]),
-            ];
-        }
-
-        Ok(ret)
-    }
-}
-
-/// * Am I going to reinvent the `libvorbis` wheel myself?
-#[derive(Debug, Default, Clone, PartialEq)]
-pub struct VorbisDspState {
-    pub info: VorbisInfo,
-    backend_state: VorbisDspStatePrivate,
-    for_encode: bool,
-}
-
-#[derive(Default, Debug, Clone, PartialEq)]
-struct VorbisBlockInternal {
-    pcmdelay: Vec<Vec<f32>>,
-    ampmax: f32,
-    blocktype: i32,
-}
-
-/// Necessary stream state for linking to the framing abstraction
-#[derive(Debug, Clone, PartialEq)]
-pub struct VorbisBlock<'a> {
-    pcm: Vec<Vec<f32>>,
-
-    lw: i32,
-    w: i32,
-    nw: i32,
-    pcmend: i32,
-    mode: i32,
-
-    eofflag: bool,
-    granulepos: i64,
-    sequence: i64,
-
-    /// For read-only access of configuration
-    vorbis_dsp_state: &'a VorbisDspState,
-
-    glue_bits: i32,
-    time_bits: i32,
-    floor_bits: i32,
-    res_bits: i32,
-
-    internal: VorbisBlockInternal,
-}
-

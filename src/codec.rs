@@ -58,19 +58,30 @@ pub struct VorbisCodecSetup {
 
 impl VorbisCodecSetup {
     pub fn new(setup_header: &VorbisSetupHeader) -> io::Result<Self> {
-        let mut fullbooks = Vec::<CodeBook>::with_capacity(setup_header.static_codebooks.len());
-        for book in setup_header.static_codebooks.iter() {
-            fullbooks.push(CodeBook::new(for_encode, book)?);
-        }
         Ok(Self {
             static_codebooks: setup_header.static_codebooks.clone(),
             floors: setup_header.floors.clone(),
             residues: setup_header.residues.clone(),
             maps: setup_header.maps.clone(),
             modes: setup_header.modes.clone(),
-            fullbooks,
             ..Default::default()
         })
+    }
+
+    pub fn set_encoder_mode(&mut self) -> io::Result<()> {
+        self.fullbooks.resize(self.static_codebooks.len(), CodeBook::default());
+        for (i, static_codebook) in self.static_codebooks.iter().enumerate() {
+            self.fullbooks[i] = CodeBook::new(true, static_codebook)?;
+        }
+        Ok(())
+    }
+
+    pub fn set_decoder_mode(&mut self) -> io::Result<()> {
+        self.fullbooks.resize(self.static_codebooks.len(), CodeBook::default());
+        for (i, static_codebook) in self.static_codebooks.iter().enumerate() {
+            self.fullbooks[i] = CodeBook::new(false, static_codebook)?;
+        }
+        Ok(())
     }
 
     pub fn psyset_setup(

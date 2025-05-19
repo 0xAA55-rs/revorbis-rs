@@ -339,8 +339,96 @@ impl<'a> VorbisLookPsy<'a> {
         n: usize,
         rate: u32,
     ) -> Self {
+        let eighth_octave_lines = vorbis_info_psy_global.eighth_octave_lines;
+        let shiftoc = toOC!(rint!((vorbis_info_psy_global.eighth_octave_lines as f32 * 8.0).log2())) as i32 - 1;
+        let firstoc = (toOC!(0.25 * rate as f32 * 0.5 / n as f32) as i32 * (1 << (shiftoc + 1))) as i32 - eighth_octave_lines;
+        let maxoc = (toOC!((n as f32 + 0.25) * rate as f32 * 0.5 / n as f32) * (1 << (shiftoc + 1)) as f32 + 0.5) as i32;
+        let total_octave_lines = maxoc - firstoc + 1;
+        let mut ath = vec![0.0; n];
+        let mut octave = vec![0; n];
+        let mut bark = vec![0; n];
+
+        // AoTuV HF weighting
+        let m_val = if rate < 26000 {
+            0.0
+        } else if rate < 38000 {
+            0.94 // 32kHz
+        } else if rate > 46000 {
+            1.275 // 48kHz
+        } else {
+            1.0
+        };
+
+        // set up the lookups for a given blocksize and sample rate
+        let mut j = 0;
+        for i in 0..(MAX_ATH - 1) {
+            let endpos = rint!(fromOC!((i + 1) as f32 * 0.125 - 2.0) * 2.0 * n as f32 / rate as f32) as usize;
+            let mut base = ATH[i];
+            if j < endpos {
+                let delta = (ATH[i + 1] - base) / (endpos - j) as f32;
+                while j < endpos && j < n {
+                    ath[j] = base + 100.0;
+                    base += delta;
+                    j += 1;
+                }
+            }
+        }
+
+        while j < n {
+            ath[j] = ath[j - 1];
+            j += 1;
+        }
+
+        let mut lo = -99;
+        let mut hi = 1;
+        let noisewindowlomin = vorbis_info_phy.noisewindowlomin;
+        let noisewindowhimin = vorbis_info_phy.noisewindowhimin;
+        let noisewindowlo = vorbis_info_phy.noisewindowlo;
+        let noisewindowhi = vorbis_info_phy.noisewindowhi;
+        for i in 0..n as i32 {
+            let n = n as i32;
+            let rate = rate as i32;
+            let bark_i = toBARK!(rate / (2 * n) * i);
+
+            while lo + noisewindowlomin < i as i32 &&
+                toBARK!((rate / (2 * n)) * lo) < bark_i - noisewindowlo {
+                lo += 1;
+            }
+
+            while hi <= n && (hi < i + noisewindowhimin ||
+                toBARK!(rate / (2 * n) * hi) < (bark_i + noisewindowhi)) {
+                hi += 1;
+            }
+
+            bark[i as usize] = ((lo - 1) << 16) + (hi - 1);
+        }
+
+        for i in 0..n {
+            let rate = rate as f32;
+            let n = n as f32;
+            octave[i] = (toOC!((i as f32 + 0.25) * 0.5 * rate / n) * (1 << (shiftoc + 1)) as f32 + 0.5) as i32;
+        }
+
         Self {
-            
+            eighth_octave_lines,
+            shiftoc,
+            firstoc,
+            total_octave_lines,
+            ath,
+            octave,
+            bark,
+            vorbis_info_phy,
+            n,
+            rate,
+            m_val,
+            tonecurves: setup_tone_curves(
+                &vorbis_info_phy.toneatt,
+                rate as f32 * 0.5 / n as f32,
+                n,
+                vorbis_info_phy.tone_centerboost,
+                vorbis_info_phy.tone_decay
+            ),
+            noiseoffset: setup_noise_offset(rate, n, vorbis_info_phy),
         }
     }
 }
@@ -364,3 +452,8 @@ impl Debug for VorbisLookPsy<'_> {
         .finish()
     }
 }
+
+// Psychic ready.
+// Makes sense.
+// Understandable.
+// We could use one of those!

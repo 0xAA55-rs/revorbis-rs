@@ -126,7 +126,7 @@ impl VorbisInfo {
 }
 
 /// * The private part of the `VorbisDspState` for `libvorbis-1.3.7`
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 struct VorbisDspStatePrivate<'a, 'b, 'c, W>
 where
     W: Write + Debug
@@ -204,7 +204,7 @@ where
 }
 
 /// * Am I going to reinvent the `libvorbis` wheel myself?
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct VorbisDspState<'a, 'b, 'c, W>
 where
     W: Write + Debug

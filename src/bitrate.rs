@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 use std::{
-	cmp::PartialEq,
 	fmt::Debug,
 	mem,
 	io::Write,

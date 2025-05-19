@@ -110,7 +110,7 @@ impl<'a> BitReader<'a> {
 
     /// * Read data bit by bit
     /// * bits <= 32
-    pub fn read(&mut self, mut bits: i32) -> Result<i32, io::Error> {
+    pub fn read(&mut self, mut bits: i32) -> io::Result<i32> {
         if !(0..=32).contains(&bits) {
             return_Err!(io::Error::new(io::ErrorKind::InvalidInput, format!("Invalid bit number: {bits}")));
         }
@@ -120,7 +120,7 @@ impl<'a> BitReader<'a> {
         let cursor = self.cursor;
 
         // Don't want it panic, and don't want an Option.
-        let ptr_index = |mut index: usize| -> Result<u8, io::Error> {
+        let ptr_index = |mut index: usize| -> io::Result<u8> {
             index += cursor;
             let eof_err = || -> io::Error {
                 io::Error::new(io::ErrorKind::UnexpectedEof, format!("UnexpectedEof when trying to read {origbits} bits from the input position 0x{:x}", index))
@@ -198,7 +198,7 @@ where
     }
 
     /// * Write data by bytes one by one
-    fn write_byte(&mut self, byte: u8) -> Result<(), io::Error> {
+    fn write_byte(&mut self, byte: u8) -> io::Result<()> {
         self.cache.write_all(&[byte])?;
         if self.cache.len() >= Self::CACHE_SIZE {
             self.flush()?;
@@ -207,7 +207,7 @@ where
     }
 
     /// * Write data in bits, max is 32 bit.
-    pub fn write(&mut self, mut value: u32, mut bits: i32) -> Result<(), io::Error> {
+    pub fn write(&mut self, mut value: u32, mut bits: i32) -> io::Result<()> {
         if !(0..=32).contains(&bits) {
             return_Err!(io::Error::new(io::ErrorKind::InvalidInput, format!("Invalid bits {bits}")));
         }
@@ -239,7 +239,7 @@ where
         Ok(())
     }
 
-    pub fn flush(&mut self) -> Result<(), io::Error> {
+    pub fn flush(&mut self) -> io::Result<()> {
         if self.cache.is_empty() {
             Ok(())
         } else if self.endbit == 0 {
@@ -256,7 +256,7 @@ where
         }
     }
 
-    pub fn force_flush(&mut self) -> Result<(), io::Error> {
+    pub fn force_flush(&mut self) -> io::Result<()> {
         self.writer.write_all(&self.cache[..])?;
         self.cache.clear();
         self.endbit = 0;

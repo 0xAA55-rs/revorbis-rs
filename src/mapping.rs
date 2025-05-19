@@ -31,7 +31,7 @@ pub struct VorbisMapping {
 }
 
 impl VorbisMapping {
-    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader, ident_header: &VorbisIdentificationHeader) -> Result<Self, io::Error> {
+    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader, ident_header: &VorbisIdentificationHeader) -> io::Result<Self> {
         let mapping_type = read_bits!(bitreader, 16);
 
         if mapping_type != 0 {
@@ -117,7 +117,7 @@ impl VorbisMapping {
     }
 
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>, channels: i32) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>, channels: i32) -> io::Result<usize>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;

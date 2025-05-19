@@ -21,7 +21,7 @@ pub struct StaticCodeBooksPacked {
 }
 
 impl StaticCodeBooksPacked {
-    pub fn unpack(&self) -> Result<StaticCodeBooks, io::Error> {
+    pub fn unpack(&self) -> io::Result<StaticCodeBooks> {
         StaticCodeBooks::load_from_slice(&self.books.data)
     }
 
@@ -99,7 +99,7 @@ pub struct StaticCodeBooks {
 
 impl StaticCodeBooks {
     /// * Unpack the codebooks from the bitstream
-    pub fn load(bitreader: &mut BitReader) -> Result<Self, io::Error> {
+    pub fn load(bitreader: &mut BitReader) -> io::Result<Self> {
         let begin_bits = bitreader.total_bits;
         let num_books = (read_bits!(bitreader, 8).wrapping_add(1)) as usize;
         let mut books = Vec::<StaticCodeBook>::with_capacity(num_books);
@@ -117,7 +117,7 @@ impl StaticCodeBooks {
     }
 
     /// * Unpack from a slice
-    pub fn load_from_slice(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn load_from_slice(data: &[u8]) -> io::Result<Self> {
         let mut bitreader = BitReader::new(data);
         Self::load(&mut bitreader)
     }
@@ -143,7 +143,7 @@ impl StaticCodeBooks {
     }
 
     /// * Pack the codebook to binary for storage.
-    pub fn to_packed_codebooks(&self) -> Result<StaticCodeBooksPacked, io::Error> {
+    pub fn to_packed_codebooks(&self) -> io::Result<StaticCodeBooksPacked> {
         let mut bitwriter = BitWriter::new(CursorVecU8::default());
         let mut bits_of_books = Vec::<usize>::with_capacity(self.books.len());
         write_bits!(bitwriter, self.books.len().wrapping_sub(1), 8);
@@ -161,7 +161,7 @@ impl StaticCodeBooks {
     }
 
     /// * Pack to bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> io::Result<usize>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;
@@ -200,7 +200,7 @@ derive_index!(StaticCodeBooks, StaticCodeBook, books);
 /// * Since Vorbis stores data in bitwise form, all of the data are not aligned in bytes, we have to parse it bit by bit.
 /// * After parsing the codebooks, we can sum up the total bits of the codebooks, and then we can replace it with an empty codebook.
 /// * At last, use our `BitwiseData` to concatenate these bit-strings without any gaps.
-pub fn remove_codebook_from_setup_header(setup_header: &[u8]) -> Result<Vec<u8>, io::Error> {
+pub fn remove_codebook_from_setup_header(setup_header: &[u8]) -> io::Result<Vec<u8>> {
     // Try to verify if this is the right way to read the codebook
     assert_eq!(&setup_header[0..7], b"\x05vorbis", "Checking the vorbis header that is a `setup_header` or not");
 
@@ -229,7 +229,7 @@ pub fn remove_codebook_from_setup_header(setup_header: &[u8]) -> Result<Vec<u8>,
 /// * And when decoding, he creates a temporary encoder with parameters referenced from the `fmt ` chunk, uses that encoder to create the Vorbis header to feed the decoder, and then can decode the Vorbis audio.
 /// * It has nothing to do with the codebook. I was pranked.
 /// * Thanks, the source code from 2001, and the author from Japan.
-pub fn _remove_codebook_from_ogg_stream(data: &[u8]) -> Result<Vec<u8>, io::Error> {
+pub fn _remove_codebook_from_ogg_stream(data: &[u8]) -> io::Result<Vec<u8>> {
     use ogg::{OggPacket, OggPacketType};
     let mut stream_id = 0u32;
     let (identification_header, comment_header, setup_header) = headers::get_vorbis_headers_from_ogg_packet_bytes(data, &mut stream_id)?;

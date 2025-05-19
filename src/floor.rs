@@ -30,7 +30,7 @@ pub enum VorbisLookFloor<'a> {
 }
 
 impl VorbisFloor {
-    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<VorbisFloor, io::Error> {
+    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> io::Result<VorbisFloor> {
         let floor_type = read_bits!(bitreader, 16);
         match floor_type {
             0 => Ok(VorbisFloor0::load(bitreader, vorbis_info)?),
@@ -46,7 +46,7 @@ impl VorbisFloor {
         }
     }
 
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> io::Result<usize>
     where
         W: Write {
         match self {
@@ -111,7 +111,7 @@ pub struct VorbisLookFloor0<'a> {
 }
 
 impl VorbisFloor0 {
-    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<VorbisFloor, io::Error> {
+    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> io::Result<VorbisFloor> {
         let static_codebooks = &vorbis_info.static_codebooks;
         let mut ret = Self {
             order: read_bits!(bitreader, 8),
@@ -152,7 +152,7 @@ impl VorbisFloor0 {
     }
 
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, _: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, _: &mut BitWriter<W>) -> io::Result<usize>
     where
         W: Write {
         // Floor0 never pack.
@@ -263,7 +263,7 @@ pub struct VorbisLookFloor1<'a> {
 }
 
 impl VorbisFloor1 {
-    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<VorbisFloor, io::Error> {
+    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> io::Result<VorbisFloor> {
         let static_codebooks = &vorbis_info.static_codebooks;
         let mut ret = Self::default();
 
@@ -334,7 +334,7 @@ impl VorbisFloor1 {
     }
 
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> io::Result<usize>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;

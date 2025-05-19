@@ -25,7 +25,7 @@ pub struct VorbisIdentificationHeader {
 
 impl VorbisIdentificationHeader {
     /// * Unpack from a bitstream
-    pub fn load(bitreader: &mut BitReader) -> Result<Self, io::Error> {
+    pub fn load(bitreader: &mut BitReader) -> io::Result<Self> {
         let ident = read_slice!(bitreader, 7);
         if ident != b"\x01vorbis" {
             Err(io::Error::new(io::ErrorKind::InvalidData, format!("Not a Vorbis identification header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
@@ -62,13 +62,13 @@ impl VorbisIdentificationHeader {
     }
 
     /// * Unpack from a slice
-    pub fn load_from_slice(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn load_from_slice(data: &[u8]) -> io::Result<Self> {
         let mut bitreader = BitReader::new(data);
         Self::load(&mut bitreader)
     }
 
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> io::Result<usize>
     where
         W: Write {
         let bs_1: u8 = ilog!(self.block_size[0] - 1);
@@ -97,7 +97,7 @@ pub struct VorbisCommentHeader {
 
 impl VorbisCommentHeader {
     /// * Unpack from a bitstream
-    pub fn load(bitreader: &mut BitReader) -> Result<Self, io::Error> {
+    pub fn load(bitreader: &mut BitReader) -> io::Result<Self> {
         let ident = read_slice!(bitreader, 7);
         if ident != b"\x03vorbis" {
             Err(io::Error::new(io::ErrorKind::InvalidData, format!("Not a Vorbis comment header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
@@ -131,7 +131,7 @@ impl VorbisCommentHeader {
     }
 
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> io::Result<usize>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;
@@ -160,7 +160,7 @@ pub struct VorbisMode {
 
 impl VorbisMode {
     /// * Unpack from the bitstream
-    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<Self, io::Error> {
+    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> io::Result<Self> {
         let ret = Self {
             block_flag: read_bits!(bitreader, 1) != 0,
             window_type: read_bits!(bitreader, 16),
@@ -180,7 +180,7 @@ impl VorbisMode {
     }
 
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> io::Result<usize>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;
@@ -215,7 +215,7 @@ pub struct VorbisSetupHeader {
 
 impl VorbisSetupHeader {
     /// * Unpack from a bitstream
-    pub fn load(bitreader: &mut BitReader, ident_header: &VorbisIdentificationHeader) -> Result<Self, io::Error> {
+    pub fn load(bitreader: &mut BitReader, ident_header: &VorbisIdentificationHeader) -> io::Result<Self> {
         let ident = read_slice!(bitreader, 7);
         if ident != b"\x05vorbis" {
             Err(io::Error::new(io::ErrorKind::InvalidData, format!("Not a Vorbis comment header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
@@ -289,7 +289,7 @@ impl VorbisSetupHeader {
     }
 
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>, ident_header: &VorbisIdentificationHeader) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>, ident_header: &VorbisIdentificationHeader) -> io::Result<usize>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;
@@ -340,7 +340,7 @@ impl VorbisSetupHeader {
 /// * This function extracts data from some Ogg packets, the packets contains the Vorbis headers.
 /// * There are 3 kinds of Vorbis headers, they are the identification header, the metadata header, and the setup header.
 #[allow(clippy::type_complexity)]
-pub fn get_vorbis_headers_from_ogg_packet_bytes(data: &[u8], stream_id: &mut u32) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), io::Error> {
+pub fn get_vorbis_headers_from_ogg_packet_bytes(data: &[u8], stream_id: &mut u32) -> io::Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
     let mut cursor = CursorVecU8::new(data.to_vec());
     let ogg_packets = OggPacket::from_cursor(&mut cursor);
 

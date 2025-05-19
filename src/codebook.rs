@@ -17,7 +17,7 @@ fn bitreverse(mut x: u32) -> u32 {
     x
 }
 
-fn make_words(lengthlist: &[i8], n: i32, sparsecount: i32) -> Result<Vec<u32>, io::Error> {
+fn make_words(lengthlist: &[i8], n: i32, sparsecount: i32) -> io::Result<Vec<u32>> {
     let mut count = 0usize;
     let n = n as usize;
     let sparsecount = sparsecount as usize;
@@ -147,7 +147,7 @@ impl Debug for StaticCodeBook {
 impl StaticCodeBook {
     /// unpacks a codebook from the packet buffer into the codebook struct,
     /// readies the codebook auxiliary structures for decode
-    pub fn load(bitreader: &mut BitReader) -> Result<Self, io::Error> {
+    pub fn load(bitreader: &mut BitReader) -> io::Result<Self> {
         let mut ret = Self::default();
 
         /* make sure alignment is correct */
@@ -284,7 +284,7 @@ impl StaticCodeBook {
     ///   generated algorithmically (each column of the vector counts through
     ///   the values in the quant vector). in map type 2, all the values came
     ///   in in an explicit list. Both value lists must be unpacked.
-    pub fn book_unquantize(&self, n: usize, sparsemap: Option<&[u32]>) -> Result<Vec<f32>, io::Error> {
+    pub fn book_unquantize(&self, n: usize, sparsemap: Option<&[u32]>) -> io::Result<Vec<f32>> {
         let mut ret = vec![0.0; n * self.dim as usize];
         let mut count = 0usize;
         /* maptype 1 and 2 both use a quantized value vector, but
@@ -341,7 +341,7 @@ impl StaticCodeBook {
     }
 
     /// * Pack the book into the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> io::Result<usize>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;
@@ -490,7 +490,7 @@ pub struct CodeBook {
 }
 
 impl CodeBook {
-    pub fn new(for_encode: bool, src: &StaticCodeBook) -> Result<Self, io::Error> {
+    pub fn new(for_encode: bool, src: &StaticCodeBook) -> io::Result<Self> {
         if for_encode {
             Self::new_for_encode(src)
         } else {
@@ -498,7 +498,7 @@ impl CodeBook {
         }
     }
 
-    pub fn new_for_encode(src: &StaticCodeBook) -> Result<Self, io::Error> {
+    pub fn new_for_encode(src: &StaticCodeBook) -> io::Result<Self> {
         Ok(Self {
             dim: src.dim,
             entries: src.entries,
@@ -513,7 +513,7 @@ impl CodeBook {
     }
 
     /// Decode codebook arrangement is more heavily optimized than encode
-    pub fn new_for_decode(src: &StaticCodeBook) -> Result<Self, io::Error> {
+    pub fn new_for_decode(src: &StaticCodeBook) -> io::Result<Self> {
         /* count actually used entries and find max length */
         let mut n = 0usize;
         let used_entries = src.entries;

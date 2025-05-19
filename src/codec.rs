@@ -51,7 +51,7 @@ pub struct VorbisCodecSetup {
 }
 
 impl VorbisCodecSetup {
-    pub fn new(setup_header: &VorbisSetupHeader, for_encode: bool) -> Result<Self, io::Error> {
+    pub fn new(setup_header: &VorbisSetupHeader) -> io::Result<Self> {
         let mut fullbooks = Vec::<CodeBook>::with_capacity(setup_header.static_codebooks.len());
         for book in setup_header.static_codebooks.iter() {
             fullbooks.push(CodeBook::new(for_encode, book)?);
@@ -150,7 +150,7 @@ where
     /// Analysis side code, but directly related to blocking. Thus it's
     /// here and not in analysis.c (which is for analysis transforms only).
     /// The init is here because some of it is shared
-    pub fn new(info: &mut VorbisInfo, for_encode: bool) -> Result<Self, io::Error> {
+    pub fn new(vorbis_dsp_state: &'a VorbisDspState<'_, W>) -> io::Result<Self> {
         let codec_info = &info.codec_setup;
         let block_size = [info.block_size[0] as usize, info.block_size[1] as usize];
         let hs = if codec_info.halfrate_flag {1} else {0};

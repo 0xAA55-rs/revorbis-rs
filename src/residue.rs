@@ -59,7 +59,7 @@ pub struct VorbisLookResidue<'a, 'b> {
 }
 
 impl VorbisResidue {
-    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> Result<Self, io::Error> {
+    pub fn load(bitreader: &mut BitReader, vorbis_info: &VorbisSetupHeader) -> io::Result<Self> {
         let static_codebooks = &vorbis_info.static_codebooks;
         let residue_type = read_bits!(bitreader, 16);
 
@@ -129,7 +129,7 @@ impl VorbisResidue {
     }
 
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> Result<usize, io::Error>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> io::Result<usize>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;

@@ -1,9 +1,12 @@
 #![allow(dead_code)]
-use std::io::{self, Write};
+use std::{
+    fmt::Debug,
+    io::{self, Read, Write, Seek},
+};
 
 use crate::*;
 
-use ogg::OggPacket;
+use ogg::{OggPacket, OggStreamReader};
 use io_utils::CursorVecU8;
 use bitwise::{BitReader, BitWriter};
 use codebook::StaticCodeBook;
@@ -380,16 +383,29 @@ pub fn get_vorbis_headers_from_ogg_packet_bytes(data: &[u8], stream_id: &mut u32
 
 /// * This function extracts data from Ogg packets, the packets contains the Vorbis header.
 /// * The packets were all decoded.
-pub fn parse_vorbis_headers(data: &[u8], stream_id: &mut u32) -> (VorbisIdentificationHeader, VorbisCommentHeader, VorbisSetupHeader) {
-    let (b1, b2, b3) = get_vorbis_headers_from_ogg_packet_bytes(data, stream_id).unwrap();
-    debugln!("b1 = [{}]", format_array!(b1, " ", "{:02x}"));
-    debugln!("b2 = [{}]", format_array!(b2, " ", "{:02x}"));
-    debugln!("b3 = [{}]", format_array!(b3, " ", "{:02x}"));
-    let mut br1 = BitReader::new(&b1);
-    let mut br2 = BitReader::new(&b2);
-    let mut br3 = BitReader::new(&b3);
-    let h1 = VorbisIdentificationHeader::load(&mut br1).unwrap();
-    let h2 = VorbisCommentHeader::load(&mut br2).unwrap();
-    let h3 = VorbisSetupHeader::load(&mut br3, &h1).unwrap();
-    (h1, h2, h3)
+pub fn read_vorbis_headers<R>(reader: &mut OggStreamReader<R>, text_codecs: &StringCodecMaps) -> io::Result<(VorbisIdentificationHeader, VorbisCommentHeader, VorbisSetupHeader)>
+where
+    R: Read + Seek + Debug {
+    let get_packet = |reader: &mut OggStreamReader<R>, errmsg: &str| -> io::Result<OggPacket> {Ok(reader.get_packet()?.ok_or(io::Error::new(io::ErrorKind::UnexpectedEof, errmsg))?)};
+
+    // The identification header must be placed in a separate Ogg packet.
+    let packet = get_packet(reader, "Read the first Ogg packet failed.")?;
+    let mut bytes = packet.into_inner();
+    let mut br = BitReader::new(&bytes);
+    let h1 = VorbisIdentificationHeader::load(&mut br)?;
+
+    // The comment header and setup header may either be combined in the same Ogg packet or reside in separate Ogg packets.
+    let packet = get_packet(reader, "Read the second Ogg packet failed.")?;
+    bytes = packet.into_inner();
+    br = BitReader::new(&mut bytes);
+    let h2 = VorbisCommentHeader::load(&mut br, text_codecs)?;
+    br.goto_next_byte();
+    if br.has_reached_end() {
+        // The 3rd packet is needed to be extracted for the 3rd header
+        let packet = get_packet(reader, "Read the third Ogg packet failed.")?;
+        bytes = packet.into_inner();
+        br = BitReader::new(&mut bytes);
+    }
+    let h3 = VorbisSetupHeader::load(&mut br, &h1)?;
+    Ok((h1, h2, h3))
 }

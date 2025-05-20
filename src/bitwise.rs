@@ -155,7 +155,7 @@ impl<'a> BitReader<'a> {
 }
 
 /// * BitWriter: write vorbis data bit by bit
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct BitWriter<W>
 where
     W: Write {

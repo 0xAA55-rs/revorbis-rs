@@ -225,7 +225,7 @@ impl VorbisSetupHeader {
     pub fn load(bitreader: &mut BitReader, ident_header: &VorbisIdentificationHeader) -> io::Result<Self> {
         let ident = read_slice!(bitreader, 7);
         if ident != b"\x05vorbis" {
-            Err(io::Error::new(io::ErrorKind::InvalidData, format!("Not a Vorbis comment header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
+            Err(io::Error::new(io::ErrorKind::InvalidData, format!("Not a Vorbis setup header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
         } else {
             let mut ret = Self::default();
 

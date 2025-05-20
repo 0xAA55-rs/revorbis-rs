@@ -14,8 +14,8 @@ use blocks::VorbisBlock;
 pub struct VorbisBitrateManagerState {
     pub managed: bool,
 
-    pub avg_reservoir: i32,
-    pub minmax_reservoir: i32,
+    pub avg_reservoir: usize,
+    pub minmax_reservoir: usize,
     pub avg_bitsper: i32,
     pub min_bitsper: i32,
     pub max_bitsper: i32,
@@ -35,7 +35,7 @@ impl VorbisBitrateManagerState {
         if manager_info.reservoir_bits > 0 {
             let ratesamples = vorbis_info.sample_rate as f32;
             let halfsamples = (codec_setup.block_size[0] >> 1) as f32;
-            let desired_fill = (manager_info.reservoir_bits as f64 * manager_info.reservoir_bias) as i32;
+            let desired_fill = (manager_info.reservoir_bits as f64 * manager_info.reservoir_bias) as usize;
             Self {
                 managed: true,
                 short_per_long: codec_setup.block_size[1] / codec_setup.block_size[0],

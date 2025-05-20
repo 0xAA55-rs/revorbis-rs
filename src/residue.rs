@@ -163,10 +163,7 @@ impl VorbisResidue {
 }
 
 impl VorbisLookResidue {
-    pub fn look<W>(residue: Rc<VorbisResidue>, vorbis_dsp_state: &VorbisDspState<W>) -> VorbisLookResidue
-    where
-        W: Write + Debug
-    {
+    pub fn look(residue: Rc<VorbisResidue>, vorbis_dsp_state: &VorbisDspState) -> VorbisLookResidue {
         let codec_setup = &vorbis_dsp_state.vorbis_info.codec_setup;
         let fullbooks = codec_setup.fullbooks.clone();
         let phrasebook = fullbooks.borrow()[residue.groupbook as usize].clone();

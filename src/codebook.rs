@@ -470,7 +470,7 @@ pub struct CodeBook {
     // for decode, the below are ordered by bitreversed codeword and only used entries are populated
 
     /// list of dim*entries actual entry values
-    pub value_list: Vec<f32>,
+    pub value_list: Option<Vec<f32>>,
 
     /// list of bitstream codewords for each entry
     pub code_list: Vec<u32>,

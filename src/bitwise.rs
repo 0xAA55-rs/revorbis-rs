@@ -259,7 +259,10 @@ where
     pub fn force_flush(&mut self) -> io::Result<()> {
         self.writer.write_all(&self.cache[..])?;
         self.cache.clear();
-        self.endbit = 0;
+        if self.endbit != 0 {
+            self.total_bits += 8 - self.endbit as usize;
+            self.endbit = 0;
+        }
         Ok(())
     }
 }

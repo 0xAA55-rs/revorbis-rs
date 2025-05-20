@@ -37,8 +37,9 @@ pub struct VorbisBlock {
     pub mode: i32,
 
     pub eofflag: bool,
-    pub granulepos: i64,
-    pub sequence: i64,
+    pub granulepos: u64,
+    pub sequence: u32,
+    pub ogg_stream_id: u32,
 
     /// For read-only access of configuration
     pub vorbis_dsp_state: Rc<VorbisDspState>,
@@ -52,9 +53,10 @@ pub struct VorbisBlock {
 }
 
 impl VorbisBlock {
-    pub fn new(vorbis_dsp_state: Rc<VorbisDspState>) -> Self {
+    pub fn new(vorbis_dsp_state: Rc<VorbisDspState>, ogg_stream_id: u32) -> Self {
         let mut ret = Self {
             ogg_pack_buffer: Rc::default(),
+            ogg_stream_id,
             vorbis_dsp_state: vorbis_dsp_state.clone(),
             internal: None,
             ..Default::default()

@@ -297,6 +297,30 @@ impl BitWriterCursor {
     }
 }
 
+pub trait BitWriterSeekable {
+    fn set_len(&mut self, len: u64) -> io::Result<()>;
+    fn write_trunc(&mut self, bits: usize) -> io::Result<()>;
+}
+
+impl BitWriterSeekable for BitWriterCursor {
+    fn set_len(&mut self, len: u64) -> io::Result<()> {
+        self.force_flush()?;
+        self.writer.set_len(len as usize);
+        self.writer.set_position(len);
+        self.total_bits = (len * 8) as usize;
+        Ok(())
+    }
+
+    fn write_trunc(&mut self, mut bits: usize) -> io::Result<()> {
+        let bytes = bits >> 3;
+        bits -= bytes * 8;
+        self.set_len(bytes as u64)?;
+        self.endbit = bits as i32;
+        *self.last_byte() &= MASK8[bits];
+        Ok(())
+    }
+}
+
 /// * Read bits of data using `BitReader`
 #[macro_export]
 macro_rules! read_bits {

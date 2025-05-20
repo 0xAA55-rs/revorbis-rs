@@ -331,8 +331,7 @@ impl VorbisDspState {
             centerW,
             sequence: 3,
             ..Default::default()
-        });
-        ret.backend_state = VorbisDspStatePrivate::new(&ret)?;
+        };
         let vi = &mut ret.vorbis_info;
         let ci = &mut vi.codec_setup;
         if for_encode {
@@ -340,6 +339,7 @@ impl VorbisDspState {
         } else {
             ci.set_decoder_mode()?;
         }
+        ret.backend_state = VorbisDspStatePrivate::new(&ret)?;
         Ok(ret)
     }
 

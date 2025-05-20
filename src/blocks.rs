@@ -4,6 +4,7 @@ use std::{
     fmt::Debug,
     io::Write,
     rc::Rc,
+    cell::RefCell,
 };
 
 pub const BLOCKTYPE_IMPULSE    : i32 = 0;
@@ -13,7 +14,7 @@ pub const BLOCKTYPE_LONG       : i32 = 1;
 
 use crate::*;
 use codec::VorbisDspState;
-use ogg::OggStreamWriter;
+use bitwise::BitWriterCursor;
 
 #[derive(Default, Debug, Clone, PartialEq)]
 struct VorbisBlockInternal {
@@ -29,7 +30,7 @@ where
     W: Write + Debug
 {
     pub pcm: Vec<Vec<f32>>,
-    pub ogg_stream_writer: OggStreamWriter<W>,
+    pub ogg_pack_buffer: Rc<RefCell<BitWriterCursor>>,
 
     pub l_w: usize,
     pub w: usize,
@@ -84,6 +85,7 @@ where
         let mut ret_z = mem::MaybeUninit::<Self>::zeroed();
         unsafe {
             let ptr = ret_z.as_mut_ptr();
+            write(addr_of_mut!((*ptr).ogg_pack_buffer), Rc::default());
             write(addr_of_mut!((*ptr).internal), None);
             ret_z.assume_init()
         }

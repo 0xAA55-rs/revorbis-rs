@@ -13,6 +13,7 @@ keywords = ["vorbis", "audio"]
 tinyogg = "^0"
 copiablebuf = "^0"
 shared_io_utils = "^0"
+savagestr = "^0"
 
 [lib]
 name = "revorbis"

@@ -10,6 +10,7 @@ use codebook::StaticCodeBook;
 use floor::VorbisFloor;
 use residue::VorbisResidue;
 use mapping::VorbisMapping;
+use savagestr::prelude::*;
 
 /// * The `VorbisIdentificationHeader` is the Vorbis identification header, the first header
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -97,7 +98,7 @@ pub struct VorbisCommentHeader {
 
 impl VorbisCommentHeader {
     /// * Unpack from a bitstream
-    pub fn load(bitreader: &mut BitReader) -> io::Result<Self> {
+    pub fn load(bitreader: &mut BitReader, text_codecs: &StringCodecMaps) -> io::Result<Self> {
         let ident = read_slice!(bitreader, 7);
         if ident != b"\x03vorbis" {
             Err(io::Error::new(io::ErrorKind::InvalidData, format!("Not a Vorbis comment header, the header type is {}, the string is {}", ident[0], String::from_utf8_lossy(&ident[1..]))))
@@ -106,7 +107,7 @@ impl VorbisCommentHeader {
             if vendor_len < 0 {
                 return_Err!(io::Error::new(io::ErrorKind::InvalidData, format!("Bad vendor string length {vendor_len}")));
             }
-            let vendor = read_string!(bitreader, vendor_len as usize)?;
+            let vendor = read_string!(bitreader, vendor_len as usize, text_codecs);
             let num_comments = read_bits!(bitreader, 32);
             if num_comments < 0 {
                 return_Err!(io::Error::new(io::ErrorKind::InvalidData, format!("Bad number of comments {num_comments}")));
@@ -117,7 +118,7 @@ impl VorbisCommentHeader {
                 if comment_len < 0 {
                     return_Err!(io::Error::new(io::ErrorKind::InvalidData, format!("Bad comment string length {vendor_len}")));
                 }
-                comments.push(read_string!(bitreader, comment_len as usize)?);
+                comments.push(read_string!(bitreader, comment_len as usize, text_codecs));
             }
             let end_of_packet = read_bits!(bitreader, 1) & 1 == 1;
             if !end_of_packet {
@@ -131,17 +132,23 @@ impl VorbisCommentHeader {
     }
 
     /// * Pack to the bitstream
-    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>) -> io::Result<usize>
+    pub fn pack<W>(&self, bitwriter: &mut BitWriter<W>, text_codecs: &StringCodecMaps) -> io::Result<usize>
     where
         W: Write {
         let begin_bits = bitwriter.total_bits;
+        fn write_encoded<W>(bitwriter: &mut BitWriter<W>, s: &str, text_codecs: &StringCodecMaps) -> io::Result<()>
+        where
+            W: Write {
+            let encoded = text_codecs.encode(s);
+            write_bits!(bitwriter, encoded.len(), 32);
+            write_slice!(bitwriter, encoded);
+            Ok(())
+        }
         write_slice!(bitwriter, b"\x03vorbis");
-        write_bits!(bitwriter, self.vendor.len(), 32);
-        write_string!(bitwriter, self.vendor);
+        write_encoded(bitwriter, &self.vendor, text_codecs)?;
         write_bits!(bitwriter, self.comments.len(), 32);
         for comment in self.comments.iter() {
-            write_bits!(bitwriter, comment.len(), 32);
-            write_string!(bitwriter, comment);
+            write_encoded(bitwriter, comment, text_codecs)?;
         }
         write_bits!(bitwriter, 1, 1);
         Ok(bitwriter.total_bits - begin_bits)

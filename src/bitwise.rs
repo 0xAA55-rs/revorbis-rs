@@ -387,6 +387,12 @@ macro_rules! read_string {
             }
         }
     };
+    ($bitreader:ident, $length:expr, $text_codec:expr) => {
+        {
+            let s = read_slice!($bitreader, $length);
+            $text_codec.decode(&s)
+        }
+    };
 }
 
 /// * Write a slice to the `BitWriter`

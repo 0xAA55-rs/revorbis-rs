@@ -6,6 +6,11 @@ use std::{
     rc::Rc,
 };
 
+pub const BLOCKTYPE_IMPULSE    : i32 = 0;
+pub const BLOCKTYPE_PADDING    : i32 = 1;
+pub const BLOCKTYPE_TRANSITION : i32 = 0;
+pub const BLOCKTYPE_LONG       : i32 = 1;
+
 use crate::*;
 use codec::VorbisDspState;
 use ogg::OggStreamWriter;

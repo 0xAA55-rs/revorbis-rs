@@ -1,16 +1,31 @@
 #![allow(dead_code)]
-use std::slice::{from_raw_parts, from_raw_parts_mut};
+use std::{
+    fmt::{self, Debug, Formatter},
+    slice::{from_raw_parts, from_raw_parts_mut}
+};
 
 use crate::*;
 
 /// * This is for the modified DCT transform forward and backward
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq)]
 pub struct MdctLookup {
     pub n: usize,
     pub log2n: i32,
     pub trig: Vec<f32>,
     pub bitrev: Vec<i32>,
     pub scale: f32,
+}
+
+impl Debug for MdctLookup {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("MdctLookup")
+        .field("n", &self.n)
+        .field("log2n", &self.log2n)
+        .field("trig", &format_args!("[{}]", format_array!(self.trig)))
+        .field("bitrev", &format_args!("[{}]", format_array!(self.bitrev)))
+        .field("scale", &self.scale)
+        .finish()
+    }
 }
 
 const COS_PI3_8: f32 = 0.3826834323650897717284599840304; // (std::f32::consts::PI * 3.0 / 8.0).cos();

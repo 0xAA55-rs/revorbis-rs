@@ -4,6 +4,7 @@ use std::{
     io,
     mem,
     rc::Rc,
+    cell::RefCell,
 };
 
 use crate::*;
@@ -23,7 +24,7 @@ pub struct VorbisBitrateManagerState {
     pub short_per_long: i32,
     pub avgfloat: f64,
 
-    pub vorbis_block: Option<Rc<VorbisBlock>>,
+    pub vorbis_block: Option<Rc<RefCell<VorbisBlock>>>,
     pub choice: i32,
 }
 

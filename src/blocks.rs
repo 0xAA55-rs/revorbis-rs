@@ -24,14 +24,14 @@ pub struct VorbisBlockInternal {
 }
 
 /// Necessary stream state for linking to the framing abstraction
-#[derive(Debug)]
+#[allow(non_snake_case)]
 pub struct VorbisBlock {
     pub pcm: Vec<Vec<f32>>,
     pub ogg_pack_buffer: Rc<RefCell<BitWriterCursor>>,
 
-    pub l_w: usize,
-    pub w: usize,
-    pub n_w: usize,
+    pub lW: usize,
+    pub W: usize,
+    pub nW: usize,
     pub pcmend: usize,
 
     pub mode: i32,

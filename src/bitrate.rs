@@ -67,17 +67,17 @@ impl VorbisBitrateManagerState {
 
         let mut choice = rint!(self.avgfloat);
         let mut this_bits = vbi.packetblob[choice as usize].borrow().get_total_bytes() * 8;
-        let min_target_bits = if vb.w != 0 {
+        let min_target_bits = if vb.W != 0 {
             self.min_bitsper * self.short_per_long
         } else {
             self.min_bitsper
         } as usize;
-        let max_target_bits = if vb.w != 0 {
+        let max_target_bits = if vb.W != 0 {
             self.max_bitsper * self.short_per_long
         } else {
             self.max_bitsper
         } as usize;
-        let samples = ci.block_size[vb.w as usize] >> 1;
+        let samples = ci.block_size[vb.W as usize] >> 1;
         let desired_fill = (bi.reservoir_bits as f64 * bi.reservoir_bias) as usize;
         if !b.is_bitrate_managed() {
             /* not a bitrate managed stream, but for API simplicity, we'll
@@ -95,7 +95,7 @@ impl VorbisBitrateManagerState {
 
         // look ahead for avg floater
         if self.avg_bitsper > 0 {
-            let avg_target_bits = if vb.w != 0 {
+            let avg_target_bits = if vb.W != 0 {
                 self.avg_bitsper * self.short_per_long
             } else {
                 self.avg_bitsper
@@ -219,7 +219,7 @@ impl VorbisBitrateManagerState {
 
         // avg reservoir
         if self.avg_bitsper > 0 {
-            self.avg_reservoir += this_bits - if vb.w != 0 {
+            self.avg_reservoir += this_bits - if vb.W != 0 {
                 self.avg_bitsper * self.short_per_long
             } else {
                 self.avg_bitsper

@@ -274,6 +274,7 @@ impl Default for VorbisDspStatePrivate {
 }
 
 /// * Am I going to reinvent the `libvorbis` wheel myself?
+#[allow(non_snake_case)]
 pub struct VorbisDspState {
     pub for_encode: bool,
     pub vorbis_info: VorbisInfo,
@@ -288,12 +289,12 @@ pub struct VorbisDspState {
     pub eofflag: bool,
 
     /// previous window size
-    pub l_w: usize,
+    pub lW: usize,
 
     /// current window size
-    pub w: usize,
-    pub n_w: usize,
-    pub center_w: usize,
+    pub W: usize,
+    pub nW: usize,
+    pub centerW: usize,
 
     pub granulepos: u64,
     pub sequence: u32,
@@ -307,13 +308,14 @@ pub struct VorbisDspState {
 }
 
 impl VorbisDspState {
+    #[allow(non_snake_case)]
     pub fn new(vi: VorbisInfo, for_encode: bool) -> io::Result<Box<Self>> {
         let ci = &vi.codec_setup;
         let pcm_storage = ci.block_size[1] as usize;
         let pcm = vecvec![[0.0; pcm_storage]; vi.channels as usize];
         let pcm_ret = vecvec![[0.0; pcm_storage]; vi.channels as usize];
-        let center_w = (ci.block_size[1] / 2) as usize;
-        let pcm_current = center_w;
+        let centerW = (ci.block_size[1] / 2) as usize;
+        let pcm_current = centerW;
 
         let mut ret = Box::new(Self {
             for_encode,
@@ -322,7 +324,7 @@ impl VorbisDspState {
             pcm_ret,
             pcm_storage,
             pcm_current,
-            center_w,
+            centerW,
             sequence: 3,
             ..Default::default()
         });
@@ -376,11 +378,12 @@ impl Debug for VorbisDspState {
         .field("pcm_returned", &self.pcm_returned)
         .field("preextrapolate", &self.preextrapolate)
         .field("eofflag", &self.eofflag)
-        .field("l_w", &self.l_w)
-        .field("w", &self.w)
-        .field("n_w", &self.n_w)
-        .field("center_w", &self.center_w)
+        .field("lW", &self.lW)
+        .field("W", &self.W)
+        .field("nW", &self.nW)
+        .field("centerW", &self.centerW)
         .field("granulepos", &self.granulepos)
+        .field("sequence", &self.sequence)
         .field("glue_bits", &self.glue_bits)
         .field("time_bits", &self.time_bits)
         .field("floor_bits", &self.floor_bits)

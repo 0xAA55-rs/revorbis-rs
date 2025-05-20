@@ -191,10 +191,10 @@ impl VorbisDspStatePrivate {
     /// Analysis side code, but directly related to blocking. Thus it's
     /// here and not in analysis.c (which is for analysis transforms only).
     /// The init is here because some of it is shared
-    pub fn new(vorbis_dsp_state: &VorbisDspState) -> io::Result<Self> {
-        let vi = &vorbis_dsp_state.vorbis_info;
+    pub fn new(vd: &VorbisDspState) -> io::Result<Self> {
+        let vi = &vd.vorbis_info;
         let ci = &vi.codec_setup;
-        let for_encode = vorbis_dsp_state.for_encode;
+        let for_encode = vd.for_encode;
         let block_size = [ci.block_size[0] as usize, ci.block_size[1] as usize];
         let hs = if ci.halfrate_flag {1} else {0};
 
@@ -222,7 +222,7 @@ impl VorbisDspStatePrivate {
         } else {
             fft_look = Vec::new();
         }
-        let vi = &vorbis_dsp_state.vorbis_info;
+        let vi = &vd.vorbis_info;
         let ci = &vi.codec_setup;
 
         let mut flr_look = Vec::<VorbisLookFloor>::with_capacity(ci.floors.len());
@@ -234,7 +234,7 @@ impl VorbisDspStatePrivate {
             flr_look.push(VorbisLookFloor::look(floor.clone()));
         }
         for residue in ci.residues.iter() {
-            residue_look.push(VorbisLookResidue::look(residue.clone(), vorbis_dsp_state));
+            residue_look.push(VorbisLookResidue::look(residue.clone(), vd));
         }
         for psy in ci.psys.iter() {
             psy_look.push(VorbisLookPsy::new(psy.clone(), &*ci.psy_g, block_size[psy.block_flag as usize] / 2, vi.sample_rate as u32));

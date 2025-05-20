@@ -284,7 +284,7 @@ impl StaticCodeBook {
     ///   generated algorithmically (each column of the vector counts through
     ///   the values in the quant vector). in map type 2, all the values came
     ///   in in an explicit list. Both value lists must be unpacked.
-    pub fn book_unquantize(&self, n: usize, sparsemap: Option<&[u32]>) -> io::Result<Vec<f32>> {
+    pub fn book_unquantize(&self, n: usize, sparsemap: Option<&[u32]>) -> io::Result<Option<Vec<f32>>> {
         let mut ret = vec![0.0; n * self.dim as usize];
         let mut count = 0usize;
         /* maptype 1 and 2 both use a quantized value vector, but
@@ -312,7 +312,7 @@ impl StaticCodeBook {
                         count += 1;
                     }
                 }
-                Ok(ret)
+                Ok(Some(ret))
             }
             2 => {
                 for j in 0..self.entries as usize {
@@ -332,10 +332,10 @@ impl StaticCodeBook {
                         count += 1;
                     }
                 }
-                Ok(ret)
+                Ok(Some(ret))
             }
-            o => {
-                return_Err!(io::Error::new(io::ErrorKind::InvalidInput, format!("Bad map type: {o}")));
+            _ => {
+                Ok(None)
             }
         }
     }

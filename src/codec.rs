@@ -251,6 +251,10 @@ impl VorbisDspStatePrivate {
             ..Default::default()
         })
     }
+
+    pub fn is_bitrate_managed(&self) -> bool {
+        self.bitrate_manager_state.managed
+    }
 }
 
 impl Default for VorbisDspStatePrivate {

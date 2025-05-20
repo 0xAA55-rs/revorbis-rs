@@ -60,20 +60,28 @@ where
     W: Write + Debug
 {
     pub fn new(vorbis_dsp_state: Rc<VorbisDspState<W>>, writer: W, ogg_stream_id: u32) -> Self {
-        Self {
-            ogg_stream_writer: OggStreamWriter::new(writer, ogg_stream_id),
+        let mut ret = Self {
+            ogg_pack_buffer: Rc::default(),
             vorbis_dsp_state: vorbis_dsp_state.clone(),
-            internal: if vorbis_dsp_state.for_encode {
-                Some(VorbisBlockInternal {
-                    pcmdelay: Vec::new(),
-                    ampmax: -9999.0,
-                    blocktype: 0,
-                })
-            } else {
-                None
-            },
+            internal: None,
             ..Default::default()
+        };
+        if vorbis_dsp_state.for_encode {
+            ret.internal = Some(VorbisBlockInternal {
+                pcmdelay: Vec::new(),
+                ampmax: -9999.0,
+                blocktype: 0,
+                packetblob: std::array::from_fn(|i|{
+                    if i == PACKETBLOBS / 2 {
+                        ret.ogg_pack_buffer.clone()
+                    } else {
+                        Rc::default()
+                    }
+                }),
+            })
         }
+
+        ret
     }
 }
 

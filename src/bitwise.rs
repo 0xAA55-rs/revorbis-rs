@@ -265,6 +265,14 @@ where
         }
         Ok(())
     }
+
+    pub fn get_total_bits(&self) -> usize {
+        self.total_bits
+    }
+
+    pub fn get_total_bytes(&self) -> usize {
+        self.total_bits >> 3
+    }
 }
 
 /// * The specialized `BitWriter` that uses `CursorVecU8>` as its sink.

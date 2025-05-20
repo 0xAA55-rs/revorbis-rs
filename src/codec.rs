@@ -313,7 +313,7 @@ pub struct VorbisDspState {
 
 impl VorbisDspState {
     #[allow(non_snake_case)]
-    pub fn new(vi: VorbisInfo, for_encode: bool) -> io::Result<Box<Self>> {
+    pub fn new(vi: VorbisInfo, for_encode: bool) -> io::Result<Self> {
         let ci = &vi.codec_setup;
         let pcm_storage = ci.block_size[1] as usize;
         let pcm = vecvec![[0.0; pcm_storage]; vi.channels as usize];
@@ -321,7 +321,7 @@ impl VorbisDspState {
         let centerW = (ci.block_size[1] / 2) as usize;
         let pcm_current = centerW;
 
-        let mut ret = Box::new(Self {
+        let mut ret = Self{
             for_encode,
             vorbis_info: vi,
             pcm,

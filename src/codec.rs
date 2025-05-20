@@ -192,17 +192,17 @@ impl VorbisDspStatePrivate {
     /// here and not in analysis.c (which is for analysis transforms only).
     /// The init is here because some of it is shared
     pub fn new(vorbis_dsp_state: &VorbisDspState) -> io::Result<Self> {
-        let vorbis_info = &vorbis_dsp_state.vorbis_info;
-        let codec_setup = &vorbis_info.codec_setup;
+        let vi = &vorbis_dsp_state.vorbis_info;
+        let ci = &vi.codec_setup;
         let for_encode = vorbis_dsp_state.for_encode;
-        let block_size = [codec_setup.block_size[0] as usize, codec_setup.block_size[1] as usize];
-        let hs = if codec_setup.halfrate_flag {1} else {0};
+        let block_size = [ci.block_size[0] as usize, ci.block_size[1] as usize];
+        let hs = if ci.halfrate_flag {1} else {0};
 
-        assert!(codec_setup.modes.len() > 0);
+        assert!(ci.modes.len() > 0);
         assert!(block_size[0] >= 64);
         assert!(block_size[1] >= block_size[0]);
 
-        let modebits = ilog!(codec_setup.modes.len() - 1);
+        let modebits = ilog!(ci.modes.len() - 1);
         let transform = [
             [
                 MdctLookup::new(block_size[0] >> hs),
@@ -222,22 +222,22 @@ impl VorbisDspStatePrivate {
         } else {
             fft_look = Vec::new();
         }
-        let vorbis_info = &vorbis_dsp_state.vorbis_info;
-        let codec_setup = &vorbis_info.codec_setup;
+        let vi = &vorbis_dsp_state.vorbis_info;
+        let ci = &vi.codec_setup;
 
-        let mut flr_look = Vec::<VorbisLookFloor>::with_capacity(codec_setup.floors.len());
-        let mut residue_look = Vec::<VorbisLookResidue>::with_capacity(codec_setup.residues.len());
-        let mut psy_look = Vec::<VorbisLookPsy>::with_capacity(codec_setup.psys.len());
-        let psy_g_look = vorbis_info.psy_global_look();
+        let mut flr_look = Vec::<VorbisLookFloor>::with_capacity(ci.floors.len());
+        let mut residue_look = Vec::<VorbisLookResidue>::with_capacity(ci.residues.len());
+        let mut psy_look = Vec::<VorbisLookPsy>::with_capacity(ci.psys.len());
+        let psy_g_look = vi.psy_global_look();
 
-        for floor in codec_setup.floors.iter() {
+        for floor in ci.floors.iter() {
             flr_look.push(VorbisLookFloor::look(floor.clone()));
         }
-        for residue in codec_setup.residues.iter() {
+        for residue in ci.residues.iter() {
             residue_look.push(VorbisLookResidue::look(residue.clone(), vorbis_dsp_state));
         }
-        for psy in codec_setup.psys.iter() {
-            psy_look.push(VorbisLookPsy::new(psy.clone(), &*codec_setup.psy_g, block_size[psy.block_flag as usize] / 2, vorbis_info.sample_rate as u32));
+        for psy in ci.psys.iter() {
+            psy_look.push(VorbisLookPsy::new(psy.clone(), &*ci.psy_g, block_size[psy.block_flag as usize] / 2, vi.sample_rate as u32));
         }
 
         Ok(Self {
@@ -307,11 +307,11 @@ pub struct VorbisDspState {
 
 impl VorbisDspState {
     pub fn new(vorbis_info: VorbisInfo, for_encode: bool) -> io::Result<Box<Self>> {
-        let codec_setup = &vorbis_info.codec_setup;
-        let pcm_storage = codec_setup.block_size[1] as usize;
-        let pcm = vecvec![[0.0; pcm_storage]; vorbis_info.channels as usize];
-        let pcm_ret = vecvec![[0.0; pcm_storage]; vorbis_info.channels as usize];
-        let center_w = (codec_setup.block_size[1] / 2) as usize;
+        let ci = &vi.codec_setup;
+        let pcm_storage = ci.block_size[1] as usize;
+        let pcm = vecvec![[0.0; pcm_storage]; vi.channels as usize];
+        let pcm_ret = vecvec![[0.0; pcm_storage]; vi.channels as usize];
+        let center_w = (ci.block_size[1] / 2) as usize;
         let pcm_current = center_w;
 
         let mut ret = Box::new(Self {
@@ -325,10 +325,12 @@ impl VorbisDspState {
             ..Default::default()
         });
         ret.backend_state = VorbisDspStatePrivate::new(&ret)?;
+        let vi = &mut ret.vorbis_info;
+        let ci = &mut vi.codec_setup;
         if for_encode {
-            ret.vorbis_info.codec_setup.set_encoder_mode()?;
+            ci.set_encoder_mode()?;
         } else {
-            ret.vorbis_info.codec_setup.set_decoder_mode()?;
+            ci.set_decoder_mode()?;
         }
         Ok(ret)
     }

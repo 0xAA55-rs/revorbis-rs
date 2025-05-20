@@ -332,7 +332,7 @@ fn setup_noise_offset(rate: u32, n: usize, vi: &VorbisInfoPsy) -> Vec<Vec<f32>> 
     let mut ret = vecvec![[0.0; n]; P_NOISECURVES];
 
     for i in 0..n {
-        let halfoc = (toOC!((i as f32 + 0.5) * rate as f32 / (2.0 * n as f32)) * 2.0).clamp(0.0, (P_BANDS - 1) as f32);
+        let halfoc = (toOC!((i as f32 + 0.5) * rate as f32 / (2.0 * n as f32)) * 2.0).clamp(0.0, (P_BANDS - 2) as f32);
         let inthalfoc = halfoc as i32;
         let del = halfoc - inthalfoc as f32;
 

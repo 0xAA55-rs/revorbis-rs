@@ -2,7 +2,6 @@
 #![allow(private_interfaces)]
 use std::{
     fmt::Debug,
-    io::Write,
     rc::Rc,
     cell::RefCell,
 };
@@ -26,10 +25,7 @@ pub struct VorbisBlockInternal {
 
 /// Necessary stream state for linking to the framing abstraction
 #[derive(Debug)]
-pub struct VorbisBlock<W>
-where
-    W: Write + Debug
-{
+pub struct VorbisBlock {
     pub pcm: Vec<Vec<f32>>,
     pub ogg_pack_buffer: Rc<RefCell<BitWriterCursor>>,
 
@@ -45,7 +41,7 @@ where
     pub sequence: i64,
 
     /// For read-only access of configuration
-    pub vorbis_dsp_state: Rc<VorbisDspState<W>>,
+    pub vorbis_dsp_state: Rc<VorbisDspState>,
 
     pub glue_bits: i32,
     pub time_bits: i32,
@@ -55,11 +51,8 @@ where
     pub internal: Option<VorbisBlockInternal>,
 }
 
-impl<W> VorbisBlock<W>
-where
-    W: Write + Debug
-{
-    pub fn new(vorbis_dsp_state: Rc<VorbisDspState<W>>, writer: W, ogg_stream_id: u32) -> Self {
+impl VorbisBlock {
+    pub fn new(vorbis_dsp_state: Rc<VorbisDspState>) -> Self {
         let mut ret = Self {
             ogg_pack_buffer: Rc::default(),
             vorbis_dsp_state: vorbis_dsp_state.clone(),
@@ -85,10 +78,7 @@ where
     }
 }
 
-impl<W> Default for VorbisBlock<W>
-where
-    W: Write + Debug
-{
+impl Default for VorbisBlock {
     fn default() -> Self {
         use std::{mem, ptr::{write, addr_of_mut}};
         let mut ret_z = mem::MaybeUninit::<Self>::zeroed();

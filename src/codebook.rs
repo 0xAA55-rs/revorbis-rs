@@ -215,8 +215,8 @@ impl StaticCodeBook {
             1 | 2 => {
                 /* implicitly populated value mapping */
                 /* explicitly populated value mapping */
-                ret.q_min = read_f32!(bitreader);
-                ret.q_delta = read_f32!(bitreader);
+                ret.q_min = read_f32_non_ieee!(bitreader);
+                ret.q_delta = read_f32_non_ieee!(bitreader);
                 ret.q_quant = read_bits!(bitreader, 4).wrapping_add(1);
                 ret.q_sequencep = read_bits!(bitreader, 1) != 0;
 
@@ -429,8 +429,8 @@ impl StaticCodeBook {
                     return_Err!(io::Error::new(io::ErrorKind::InvalidData, "Missing quantlist data".to_string()));
                 }
 
-                write_f32!(bitwriter, self.q_min);
-                write_f32!(bitwriter, self.q_delta);
+                write_f32_non_ieee!(bitwriter, self.q_min);
+                write_f32_non_ieee!(bitwriter, self.q_delta);
                 write_bits!(bitwriter, self.q_quant.wrapping_sub(1), 4);
                 write_bits!(bitwriter, self.q_sequencep, 1);
 

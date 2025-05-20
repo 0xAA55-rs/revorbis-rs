@@ -66,8 +66,9 @@ where
 }
 
 impl VorbisCodecSetup {
-    pub fn new(setup_header: &VorbisSetupHeader) -> io::Result<Self> {
+    pub fn new(identification_header: &VorbisIdentificationHeader, setup_header: &VorbisSetupHeader) -> io::Result<Self> {
         Ok(Self {
+            block_size: identification_header.block_size,
             static_codebooks: setup_header.static_codebooks.clone(),
             floors: to_vec_rc(&setup_header.floors),
             residues: to_vec_rc(&setup_header.residues),
@@ -160,7 +161,7 @@ impl VorbisInfo {
             bitrate_nominal: id.bitrate_nominal,
             bitrate_lower: id.bitrate_lower,
             bitrate_window: 0,
-            codec_setup: VorbisCodecSetup::new(setup_header)?,
+            codec_setup: VorbisCodecSetup::new(identification_header, setup_header)?,
         })
     }
 

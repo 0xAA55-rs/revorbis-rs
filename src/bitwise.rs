@@ -345,11 +345,73 @@ macro_rules! read_bits {
     };
 }
 
+/* 32 bit float (not IEEE; nonnormalized mantissa +
+   biased exponent) : neeeeeee eeemmmmm mmmmmmmm mmmmmmmm
+   Why not IEEE?  It's just not that important here. */
+#[macro_export]
+macro_rules! non_ieee_consts {
+    () => {
+        const VQ_FEXP: i32 = 10;
+        const VQ_FMAN: i32 = 21;
+        const VQ_FEXP_BIAS: i32 = 768; /* bias toward values smaller than 1. */
+    };
+}
+
+/// doesn't currently guard under/overflow
+#[macro_export]
+macro_rules! f32_pack_non_ieee {
+    ($val:expr) => {
+        {
+            use libm::ldexpf;
+            non_ieee_consts!();
+            let mut val = $val as f32;
+            let sign;
+            if val < 0.0 {
+                sign = -0x80000000;
+                val = -val;
+            } else {
+                sign = 0;
+            }
+            let exp = (val.log2() + 0.001).floor() as i32; /* +epsilon */
+            let mant = rint!(ldexpf(val, VQ_FMAN - 1 - exp));
+            let exp = (exp + VQ_FEXP_BIAS) << VQ_FMAN;
+            sign | exp | mant
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! f32_unpack_non_ieee {
+    ($val:expr) => {
+        {
+            use libm::ldexp;
+            non_ieee_consts!();
+            let val = $val as i32;
+            let mut mant = (val & 0x1fffff) as f64;
+            let sign = (val & -0x80000000) != 0;
+            let exp = (val & 0x7fe00000) >> VQ_FMAN;
+            if sign {mant = -mant};
+            let exp = exp - (VQ_FMAN - 1) - VQ_FEXP_BIAS;
+            // clamp excessive exponent values
+            let exp = exp.clamp(-63, 63);
+            ldexp(mant, exp) as f32
+        }
+    };
+}
+
 /// * Read a `f32` using `BitReader`
 #[macro_export]
 macro_rules! read_f32 {
     ($bitreader:ident) => {
         unsafe {std::mem::transmute::<_, f32>(read_bits!($bitreader, 32))}
+    };
+}
+
+/// * Read an non ieee `f32` using `BitReader`
+#[macro_export]
+macro_rules! read_f32_non_ieee {
+    ($bitreader:ident) => {
+        f32_unpack_non_ieee!(read_bits!($bitreader, 32))
     };
 }
 
@@ -370,6 +432,14 @@ macro_rules! write_bits {
 macro_rules! write_f32 {
     ($bitwriter:ident, $data:expr) => {
         write_bits!($bitwriter, unsafe {std::mem::transmute::<_, u32>($data)}, 32)
+    };
+}
+
+/// * Write an non ieee `f32` using `BitWriter<W>`
+#[macro_export]
+macro_rules! write_f32_non_ieee {
+    ($bitwriter:ident, $data:expr) => {
+        write_bits!($bitwriter, f32_pack_non_ieee!($data), 32)
     };
 }
 

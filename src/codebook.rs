@@ -647,13 +647,19 @@ impl CodeBook {
 
 impl Debug for CodeBook {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_struct("CodeBook")
-        .field("dim", &self.dim)
-        .field("entries", &self.entries)
-        .field("used_entries", &self.used_entries)
-        .field("static_codebook", &self.static_codebook)
-        .field("value_list", &format_args!("[{}]", format_array!(self.value_list)))
-        .field("code_list", &format_args!("[{}]", format_array!(self.code_list)))
+        let mut d = f.debug_struct("CodeBook");
+        let d = d.field("dim", &self.dim);
+        let d = d.field("entries", &self.entries);
+        let d = d.field("used_entries", &self.used_entries);
+        let d = d.field("static_codebook", &self.static_codebook);
+
+        let d = if let Some(value_list) = &self.value_list {
+            d.field("value_list", &format_args!("Some([{}])", format_array!(value_list)))
+        } else {
+            d.field("value_list", &self.value_list)
+        };
+
+        d.field("code_list", &format_args!("[{}]", format_array!(self.code_list)))
         .field("dec_index", &format_args!("[{}]", format_array!(self.dec_index)))
         .field("dec_codelengths", &format_args!("[{}]", format_array!(self.dec_codelengths)))
         .field("dec_firsttablen", &self.dec_firsttablen)

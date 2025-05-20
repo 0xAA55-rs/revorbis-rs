@@ -159,6 +159,11 @@ impl<'a> BitReader<'a> {
         self.endbit = 0;
         self.cursor += 1;
     }
+
+    /// * Check whether the end of the data has been reached
+    pub fn has_reached_end(&self) -> bool {
+        self.cursor >= self.data.len()
+    }
 }
 
 /// * BitWriter: write vorbis data bit by bit

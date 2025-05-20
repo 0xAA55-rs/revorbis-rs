@@ -2,7 +2,6 @@
 use std::{
 	fmt::Debug,
 	mem,
-	io::Write,
 	rc::Rc,
 };
 
@@ -11,10 +10,7 @@ use codec::VorbisInfo;
 use blocks::VorbisBlock;
 
 #[derive(Debug, Clone)]
-pub struct VorbisBitrateManagerState<W>
-where
-	W: Write + Debug
-{
+pub struct VorbisBitrateManagerState {
 	pub managed: bool,
 
 	pub avg_reservoir: i32,
@@ -30,10 +26,7 @@ where
 	pub choice: i32,
 }
 
-impl<W> VorbisBitrateManagerState<W>
-where
-    W: Write + Debug
-{
+impl VorbisBitrateManagerState {
 	pub fn new(vorbis_info: &VorbisInfo) -> Self {
 		let codec_setup = &vorbis_info.codec_setup;
 		let manager_info = &codec_setup.bitrate_manager_info;
@@ -60,10 +53,7 @@ where
 	}
 }
 
-impl<W> Default for VorbisBitrateManagerState<W>
-where
-    W: Write + Debug
-{
+impl Default for VorbisBitrateManagerState {
 	fn default() -> Self {
 		use std::ptr::{write, addr_of_mut};
 		let mut ret_z = mem::MaybeUninit::<Self>::zeroed();

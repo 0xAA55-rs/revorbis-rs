@@ -306,7 +306,7 @@ pub struct VorbisDspState {
 }
 
 impl VorbisDspState {
-    pub fn new(vorbis_info: VorbisInfo, for_encode: bool) -> io::Result<Box<Self>> {
+    pub fn new(vi: &VorbisInfo, for_encode: bool) -> io::Result<Box<Self>> {
         let ci = &vi.codec_setup;
         let pcm_storage = ci.block_size[1] as usize;
         let pcm = vecvec![[0.0; pcm_storage]; vi.channels as usize];
@@ -316,7 +316,7 @@ impl VorbisDspState {
 
         let mut ret = Box::new(Self {
             for_encode,
-            vorbis_info,
+            vorbis_info: vi.clone(),
             pcm,
             pcm_ret,
             pcm_storage,
@@ -394,7 +394,6 @@ impl Default for VorbisDspState {
         let mut ret_z = mem::MaybeUninit::<Self>::zeroed();
         unsafe {
             let ptr = ret_z.as_mut_ptr();
-            write(addr_of_mut!((*ptr).vorbis_info), VorbisInfo::default());
             write(addr_of_mut!((*ptr).pcm), Vec::new());
             write(addr_of_mut!((*ptr).pcm_ret), Vec::new());
             write(addr_of_mut!((*ptr).backend_state), VorbisDspStatePrivate::default());

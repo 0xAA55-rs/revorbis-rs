@@ -72,7 +72,7 @@ pub struct VorbisBitrateManagerInfo {
     pub avg_rate: i32,
     pub min_rate: i32,
     pub max_rate: i32,
-    pub reservoir_bits: i32,
+    pub reservoir_bits: usize,
     pub reservoir_bias: f64,
 
     pub slew_damp: f64,

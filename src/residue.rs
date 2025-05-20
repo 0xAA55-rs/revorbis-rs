@@ -239,6 +239,8 @@ impl Debug for VorbisResidue {
         .field("groupbook", &self.groupbook)
         .field("secondstages", &format_args!("[{}]", format_array!(self.secondstages, ", ", "{}")))
         .field("booklist", &format_args!("[{}]", format_array!(self.booklist, ", ", "{}")))
+        .field("classmetric1", &format_args!("[{}]", format_array!(self.classmetric1, ", ", "{}")))
+        .field("classmetric2", &format_args!("[{}]", format_array!(self.classmetric2, ", ", "{}")))
         .finish()
     }
 }

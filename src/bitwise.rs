@@ -152,6 +152,13 @@ impl<'a> BitReader<'a> {
         self.total_bits += origbits as usize;
         Ok(ret)
     }
+
+    /// * Skip the current unfinished byte, goto the next byte
+    pub fn goto_next_byte(&mut self) {
+        self.total_bits += 8 - self.endbit as usize;
+        self.endbit = 0;
+        self.cursor += 1;
+    }
 }
 
 /// * BitWriter: write vorbis data bit by bit

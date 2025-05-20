@@ -56,7 +56,7 @@ impl Debug for VorbisInfoPsyGlobal {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct VorbisLookPsyGlobal {
     ampmax: f32,
     channels: i32,
@@ -72,13 +72,6 @@ impl VorbisLookPsyGlobal {
             info_psy_global: info_psy_global.clone(),
             ..Default::default()
         }
-    }
-}
-
-impl Default for VorbisLookPsyGlobal {
-    #[allow(invalid_value)]
-    fn default() -> Self {
-        unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}
     }
 }
 

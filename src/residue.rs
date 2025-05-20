@@ -46,6 +46,7 @@ pub struct VorbisResidue {
     pub classmetric2: [i32; 64],
 }
 
+#[derive(Default, Clone)]
 pub struct VorbisLookResidue {
     info: Rc<VorbisResidue>,
     parts: i32,
@@ -266,12 +267,5 @@ impl Debug for VorbisLookResidue {
         .field("phrasebits", &self.phrasebits)
         .field("frames", &self.frames)
         .finish()
-    }
-}
-
-impl Default for VorbisLookResidue {
-    #[allow(invalid_value)]
-    fn default() -> Self {
-        unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}
     }
 }

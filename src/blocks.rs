@@ -24,6 +24,7 @@ pub struct VorbisBlockInternal {
 }
 
 /// Necessary stream state for linking to the framing abstraction
+#[derive(Default, Clone)]
 #[allow(non_snake_case)]
 pub struct VorbisBlock {
     pub pcm: Vec<Vec<f32>>,
@@ -101,18 +102,5 @@ impl Debug for VorbisBlock {
         .field("res_bits", &self.res_bits)
         .field("internal", &self.internal)
         .finish()
-    }
-}
-
-impl Default for VorbisBlock {
-    fn default() -> Self {
-        use std::{mem, ptr::{write, addr_of_mut}};
-        let mut ret_z = mem::MaybeUninit::<Self>::zeroed();
-        unsafe {
-            let ptr = ret_z.as_mut_ptr();
-            write(addr_of_mut!((*ptr).ogg_pack_buffer), Rc::default());
-            write(addr_of_mut!((*ptr).internal), None);
-            ret_z.assume_init()
-        }
     }
 }

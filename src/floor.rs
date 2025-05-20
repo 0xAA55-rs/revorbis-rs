@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 use std::{
     fmt::{self, Debug, Formatter},
-    mem,
     io::{self, Write},
     rc::Rc,
 };
@@ -99,7 +98,7 @@ pub struct VorbisFloor0 {
     pub greaterthan: f32,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq)]
 #[allow(non_snake_case)]
 pub struct VorbisLookFloor0 {
     ln: i32,
@@ -204,7 +203,7 @@ impl Debug for VorbisLookFloor0 {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Default, Clone, Copy, PartialEq)]
 pub struct VorbisFloor1 {
     /// 0 to 31
     pub partitions: i32,
@@ -248,7 +247,7 @@ pub struct VorbisFloor1 {
     pub n: i32,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq)]
 pub struct VorbisLookFloor1 {
     sorted_index:  CopiableBuffer<i32, {VIF_POSIT + 2}>,
     forward_index: CopiableBuffer<i32, {VIF_POSIT + 2}>,
@@ -503,25 +502,5 @@ impl Debug for VorbisLookFloor1 {
         .field("postbits", &self.postbits)
         .field("frames", &self.frames)
         .finish()
-    }
-}
-
-impl Default for VorbisFloor1 {
-    fn default() -> Self {
-        unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}
-    }
-}
-
-impl Default for VorbisLookFloor0 {
-    #[allow(invalid_value)]
-    fn default() -> Self {
-        unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}
-    }
-}
-
-impl Default for VorbisLookFloor1 {
-    #[allow(invalid_value)]
-    fn default() -> Self {
-        unsafe {mem::MaybeUninit::<Self>::zeroed().assume_init()}
     }
 }

@@ -171,7 +171,7 @@ impl VorbisInfo {
 }
 
 /// * The private part of the `VorbisDspState` for `libvorbis-1.3.7`
-#[derive(Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct VorbisDspStatePrivate {
     pub envelope: Option<VorbisEnvelopeLookup>,
     pub window: [i32; 2],
@@ -272,21 +272,6 @@ impl VorbisDspStatePrivate {
             bms.managed
         } else {
             false
-        }
-    }
-}
-
-impl Default for VorbisDspStatePrivate {
-    fn default() -> Self {
-        use std::{mem, ptr::{write, addr_of_mut}};
-        let mut ret_z = mem::MaybeUninit::<Self>::zeroed();
-        unsafe {
-            let ptr = ret_z.as_mut_ptr();
-            write(addr_of_mut!((*ptr).envelope), None);
-            write(addr_of_mut!((*ptr).transform), [[MdctLookup::default(), MdctLookup::default()]]);
-            write(addr_of_mut!((*ptr).psy_g_look), VorbisLookPsyGlobal::default());
-            write(addr_of_mut!((*ptr).bitrate_manager_state), None);
-            ret_z.assume_init()
         }
     }
 }

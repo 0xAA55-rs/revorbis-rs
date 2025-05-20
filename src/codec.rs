@@ -295,7 +295,8 @@ pub struct VorbisDspState {
     pub n_w: usize,
     pub center_w: usize,
 
-    pub granulepos: i64,
+    pub granulepos: u64,
+    pub sequence: u32,
 
     pub glue_bits: i64,
     pub time_bits: i64,
@@ -322,6 +323,7 @@ impl VorbisDspState {
             pcm_storage,
             pcm_current,
             center_w,
+            sequence: 3,
             ..Default::default()
         });
         ret.backend_state = VorbisDspStatePrivate::new(&ret)?;

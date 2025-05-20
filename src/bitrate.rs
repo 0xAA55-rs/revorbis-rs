@@ -60,7 +60,6 @@ impl VorbisBitrateManagerState {
         let vb = block.borrow_mut();
         let vbi = &vb.internal.as_ref().expect("The block should be in encoding mode");
         let vd = &vb.vorbis_dsp_state;
-        let b = &vd.backend_state;
         let vi = &vd.vorbis_info;
         let ci = &vi.codec_setup;
         let bi = &ci.bitrate_manager_info;
@@ -79,7 +78,7 @@ impl VorbisBitrateManagerState {
         } as usize;
         let samples = ci.block_size[vb.W as usize] >> 1;
         let desired_fill = (bi.reservoir_bits as f64 * bi.reservoir_bias) as usize;
-        if !b.is_bitrate_managed() {
+        if !self.managed {
             /* not a bitrate managed stream, but for API simplicity, we'll
                buffer the packet to keep the code path clean */
 

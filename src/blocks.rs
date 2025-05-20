@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(private_interfaces)]
 use std::{
-    fmt::Debug,
+    fmt::{self, Debug, Formatter},
     rc::Rc,
     cell::RefCell,
 };
@@ -77,6 +77,30 @@ impl VorbisBlock {
         }
 
         ret
+    }
+}
+
+impl Debug for VorbisBlock {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("VorbisBlock")
+        .field("pcm", &NestVecFormatter::new_level1(&self.pcm))
+        .field("ogg_pack_buffer", &self.ogg_pack_buffer)
+        .field("lW", &self.lW)
+        .field("W", &self.W)
+        .field("nW", &self.nW)
+        .field("pcmend", &self.pcmend)
+        .field("mode", &self.mode)
+        .field("eofflag", &self.eofflag)
+        .field("granulepos", &self.granulepos)
+        .field("sequence", &self.sequence)
+        .field("ogg_stream_id", &self.ogg_stream_id)
+        .field("vorbis_dsp_state", &self.vorbis_dsp_state)
+        .field("glue_bits", &self.glue_bits)
+        .field("time_bits", &self.time_bits)
+        .field("floor_bits", &self.floor_bits)
+        .field("res_bits", &self.res_bits)
+        .field("internal", &self.internal)
+        .finish()
     }
 }
 

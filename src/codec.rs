@@ -205,8 +205,8 @@ impl VorbisDspStatePrivate {
         };
 
         assert!(ci.modes.len() > 0);
-        assert!(block_size[0] >= 64);
-        assert!(block_size[1] >= block_size[0]);
+        assert!(block_size[0] >= 64, "block_size[0] = {}", block_size[0]);
+        assert!(block_size[1] >= block_size[0], "block_size = [{}, {}]", block_size[0], block_size[1]);
 
         let modebits = ilog!(ci.modes.len() - 1);
         let transform = [

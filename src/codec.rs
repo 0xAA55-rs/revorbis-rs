@@ -307,7 +307,7 @@ pub struct VorbisDspState {
 }
 
 impl VorbisDspState {
-    pub fn new(vi: &VorbisInfo, for_encode: bool) -> io::Result<Box<Self>> {
+    pub fn new(vi: VorbisInfo, for_encode: bool) -> io::Result<Box<Self>> {
         let ci = &vi.codec_setup;
         let pcm_storage = ci.block_size[1] as usize;
         let pcm = vecvec![[0.0; pcm_storage]; vi.channels as usize];
@@ -317,7 +317,7 @@ impl VorbisDspState {
 
         let mut ret = Box::new(Self {
             for_encode,
-            vorbis_info: vi.clone(),
+            vorbis_info: vi,
             pcm,
             pcm_ret,
             pcm_storage,

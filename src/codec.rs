@@ -9,6 +9,7 @@ use std::{
 
 use crate::*;
 
+use ogg::{OggPacket, OggPacketType};
 use headers::{VorbisIdentificationHeader, VorbisMode, VorbisSetupHeader};
 use bitrate::{VorbisBitrateManagerInfo, VorbisBitrateManagerState};
 use codebook::{StaticCodeBook, CodeBook};
@@ -330,6 +331,32 @@ impl VorbisDspState {
             ret.vorbis_info.codec_setup.set_decoder_mode()?;
         }
         Ok(ret)
+    }
+
+    /// Consumes the inner `vorbis_block`, excretes an Ogg packet
+    pub fn packet_out(&mut self) -> Option<OggPacket> {
+        let bm = &mut self.backend_state.bitrate_manager_state;
+        let ret = if let Some(ref mut vb) = bm.vorbis_block {
+            let vb = vb.borrow();
+            let vbi = &vb.internal.as_ref().expect("The block should be in encoding mode");
+            let choice = if bm.managed {
+                bm.choice as usize
+            } else {
+                PACKETBLOBS / 2
+            };
+            let mut ret = OggPacket::new(vb.ogg_stream_id, if vb.eofflag {
+                OggPacketType::BeginOfStream
+            } else {
+                OggPacketType::Continuation
+            }, vb.sequence);
+            ret.granule_position = vb.granulepos;
+            ret.write(&vbi.packetblob[choice as usize].borrow_mut().to_bytes());
+            Some(ret)
+        } else {
+            None
+        };
+        bm.vorbis_block = None;
+        ret
     }
 }
 

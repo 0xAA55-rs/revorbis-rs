@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(private_interfaces)]
 use std::{
-    io::{self, Write},
+    io,
     fmt::{self, Debug, Formatter},
     rc::Rc,
     cell::RefCell,
@@ -269,10 +269,7 @@ impl Default for VorbisDspStatePrivate {
 }
 
 /// * Am I going to reinvent the `libvorbis` wheel myself?
-pub struct VorbisDspState<W>
-where
-    W: Write + Debug
-{
+pub struct VorbisDspState {
     pub for_encode: bool,
     pub vorbis_info: VorbisInfo,
 
@@ -303,10 +300,7 @@ where
     pub backend_state: VorbisDspStatePrivate,
 }
 
-impl<W> VorbisDspState<W>
-where
-    W: Write + Debug
-{
+impl VorbisDspState {
     pub fn new(vorbis_info: VorbisInfo, for_encode: bool) -> io::Result<Box<Self>> {
         let codec_setup = &vorbis_info.codec_setup;
         let pcm_storage = codec_setup.block_size[1] as usize;
@@ -335,10 +329,7 @@ where
     }
 }
 
-impl<W> Debug for VorbisDspState<W>
-where
-    W: Write + Debug
-{
+impl Debug for VorbisDspState {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("VorbisDspState")
         .field("for_encode", &self.for_encode)
@@ -364,10 +355,7 @@ where
     }
 }
 
-impl<W> Default for VorbisDspState<W>
-where
-    W: Write + Debug
-{
+impl Default for VorbisDspState {
     fn default() -> Self {
         use std::{mem, ptr::{write, addr_of_mut}};
         let mut ret_z = mem::MaybeUninit::<Self>::zeroed();

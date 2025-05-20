@@ -184,7 +184,7 @@ pub struct VorbisDspStatePrivate {
     pub psy_look: Vec<VorbisLookPsy>,
     pub psy_g_look: VorbisLookPsyGlobal,
 
-    pub bitrate_manager_state: VorbisBitrateManagerState,
+    pub bitrate_manager_state: Option<VorbisBitrateManagerState>,
 }
 
 impl VorbisDspStatePrivate {
@@ -246,6 +246,12 @@ impl VorbisDspStatePrivate {
             psy_look.push(VorbisLookPsy::new(psy.clone(), &*ci.psy_g, block_size[psy.block_flag as usize] / 2, vi.sample_rate as u32));
         }
 
+        let bitrate_manager_state = if for_encode {
+            Some(VorbisBitrateManagerState::new(vi))
+        } else {
+            None
+        };
+
         Ok(Self {
             envelope,
             modebits,
@@ -256,12 +262,17 @@ impl VorbisDspStatePrivate {
             residue_look,
             psy_look,
             psy_g_look,
+            bitrate_manager_state,
             ..Default::default()
         })
     }
 
     pub fn is_bitrate_managed(&self) -> bool {
-        self.bitrate_manager_state.managed
+        if let Some(ref bms) = self.bitrate_manager_state {
+            bms.managed
+        } else {
+            false
+        }
     }
 }
 
@@ -274,7 +285,7 @@ impl Default for VorbisDspStatePrivate {
             write(addr_of_mut!((*ptr).envelope), None);
             write(addr_of_mut!((*ptr).transform), [[MdctLookup::default(), MdctLookup::default()]]);
             write(addr_of_mut!((*ptr).psy_g_look), VorbisLookPsyGlobal::default());
-            write(addr_of_mut!((*ptr).bitrate_manager_state), VorbisBitrateManagerState::default());
+            write(addr_of_mut!((*ptr).bitrate_manager_state), None);
             ret_z.assume_init()
         }
     }
@@ -348,7 +359,7 @@ impl VorbisDspState {
 
     /// Consumes the inner `vorbis_block`, excretes an Ogg packet
     pub fn packet_out(&mut self) -> Option<OggPacket> {
-        let bm = &mut self.backend_state.bitrate_manager_state;
+        let bm = self.backend_state.bitrate_manager_state.as_mut().expect("The block should be in encoding mode");
         let ret = if let Some(ref mut vb) = bm.vorbis_block {
             let vb = vb.borrow();
             let vbi = &vb.internal.as_ref().expect("The block should be in encoding mode");

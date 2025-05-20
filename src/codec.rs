@@ -277,6 +277,7 @@ impl VorbisDspStatePrivate {
 }
 
 /// * Am I going to reinvent the `libvorbis` wheel myself?
+#[derive(Default, Clone)]
 #[allow(non_snake_case)]
 pub struct VorbisDspState {
     pub for_encode: bool,
@@ -393,19 +394,5 @@ impl Debug for VorbisDspState {
         .field("res_bits", &self.res_bits)
         .field("backend_state", &self.backend_state)
         .finish()
-    }
-}
-
-impl Default for VorbisDspState {
-    fn default() -> Self {
-        use std::{mem, ptr::{write, addr_of_mut}};
-        let mut ret_z = mem::MaybeUninit::<Self>::zeroed();
-        unsafe {
-            let ptr = ret_z.as_mut_ptr();
-            write(addr_of_mut!((*ptr).pcm), Vec::new());
-            write(addr_of_mut!((*ptr).pcm_ret), Vec::new());
-            write(addr_of_mut!((*ptr).backend_state), VorbisDspStatePrivate::default());
-            ret_z.assume_init()
-        }
     }
 }

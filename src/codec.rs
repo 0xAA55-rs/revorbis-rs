@@ -171,10 +171,7 @@ impl VorbisInfo {
 
 /// * The private part of the `VorbisDspState` for `libvorbis-1.3.7`
 #[derive(Debug)]
-struct VorbisDspStatePrivate<W>
-where
-    W: Write + Debug
-{
+pub struct VorbisDspStatePrivate {
     pub envelope: Option<VorbisEnvelopeLookup>,
     pub window: [i32; 2],
     pub transform: [[MdctLookup; 2]; 1],
@@ -186,17 +183,14 @@ where
     pub psy_look: Vec<VorbisLookPsy>,
     pub psy_g_look: VorbisLookPsyGlobal,
 
-    pub bitrate_manager_state: VorbisBitrateManagerState<W>,
+    pub bitrate_manager_state: VorbisBitrateManagerState,
 }
 
-impl<W> VorbisDspStatePrivate<W>
-where
-    W: Write + Debug
-{
+impl VorbisDspStatePrivate {
     /// Analysis side code, but directly related to blocking. Thus it's
     /// here and not in analysis.c (which is for analysis transforms only).
     /// The init is here because some of it is shared
-    pub fn new(vorbis_dsp_state: &VorbisDspState<W>) -> io::Result<Self> {
+    pub fn new(vorbis_dsp_state: &VorbisDspState) -> io::Result<Self> {
         let vorbis_info = &vorbis_dsp_state.vorbis_info;
         let codec_setup = &vorbis_info.codec_setup;
         let for_encode = vorbis_dsp_state.for_encode;
@@ -259,10 +253,7 @@ where
     }
 }
 
-impl<W> Default for VorbisDspStatePrivate<W>
-where
-    W: Write + Debug
-{
+impl Default for VorbisDspStatePrivate {
     fn default() -> Self {
         use std::{mem, ptr::{write, addr_of_mut}};
         let mut ret_z = mem::MaybeUninit::<Self>::zeroed();
@@ -309,7 +300,7 @@ where
     pub floor_bits: i64,
     pub res_bits: i64,
 
-    pub backend_state: VorbisDspStatePrivate<W>,
+    pub backend_state: VorbisDspStatePrivate,
 }
 
 impl<W> VorbisDspState<W>

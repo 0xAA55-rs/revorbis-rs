@@ -554,8 +554,8 @@ impl CodeBook {
 
             codes_r.sort_by(|a, b|((a > b) as i32).cmp(&((a < b) as i32)));
 
-            let mut sortindex = Vec::<u32>::with_capacity(n);
-            let mut code_list = Vec::<u32>::with_capacity(n);
+            let mut sortindex = vec![0; n];
+            let mut code_list = vec![0; n];
 
             // the index is a reverse index
             for i in 0..n {

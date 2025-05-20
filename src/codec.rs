@@ -198,6 +198,12 @@ impl VorbisDspStatePrivate {
         let block_size = [ci.block_size[0] as usize, ci.block_size[1] as usize];
         let hs = if ci.halfrate_flag {1} else {0};
 
+        let envelope = if for_encode {
+            Some(VorbisEnvelopeLookup::new(vi))
+        } else {
+            None
+        };
+
         assert!(ci.modes.len() > 0);
         assert!(block_size[0] >= 64);
         assert!(block_size[1] >= block_size[0]);
@@ -241,6 +247,7 @@ impl VorbisDspStatePrivate {
         }
 
         Ok(Self {
+            envelope,
             modebits,
             window,
             transform,

@@ -16,11 +16,12 @@ use crate::*;
 use codec::VorbisDspState;
 use bitwise::BitWriterCursor;
 
-#[derive(Default, Debug, Clone, PartialEq)]
-struct VorbisBlockInternal {
+#[derive(Default, Debug, Clone)]
+pub struct VorbisBlockInternal {
     pub pcmdelay: Vec<Vec<f32>>,
     pub ampmax: f32,
     pub blocktype: i32,
+    pub packetblob: [Rc<RefCell<BitWriterCursor>>; PACKETBLOBS],
 }
 
 /// Necessary stream state for linking to the framing abstraction
